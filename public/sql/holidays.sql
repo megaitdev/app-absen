@@ -1,0 +1,15 @@
+INSERT INTO `holidays` (`date`, `note`, `pic`) VALUES
+	('2024-01-01', 'Tahun Baru Masehi', '1'),
+	('2024-02-08', 'Tahun Baru Imlek 2575 Kongzili', '1'),
+	('2024-03-11', 'Hari Suci Nyepi Tahun Baru Saka 1946', '1'),
+	('2024-03-29', 'Wafat Isa Almasih', '1'),
+	('2024-04-10', 'Isra Miraj Nabi Muhammad SAW', '1'),
+	('2024-05-01', 'Hari Buruh Internasional', '1'),
+	('2024-05-09', 'Kenaikan Isa Almasih', '1'),
+	('2024-05-23', 'Hari Raya Waisak 2568 BE', '1'),
+	('2024-06-01', 'Hari Lahir Pancasila', '1'),
+	('2024-06-17', 'Hari Raya Idul Adha 1445 H', '1'),
+	('2024-07-07', 'Tahun Baru Islam 1446 H', '1'),
+	('2024-08-17', 'Hari Kemerdekaan Republik Indonesia', '1'),
+	('2024-09-16', 'Maulid Nabi Muhammad SAW', '1'),
+	('2024-12-25', 'Hari Raya Natal', '1');
