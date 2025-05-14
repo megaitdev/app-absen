@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('pin')->index();
             $table->date('date')->index();
             $table->string('day')->nullable();
-            $table->foreignId('shift_id')->constrained('shifts');
+            $table->foreignId('shift_id')->nullable()->constrained('shifts');
             $table->string('status', 20)->index();
 
             $table->dateTime('scan_masuk_murni')->nullable();
@@ -29,23 +29,26 @@ return new class extends Migration
             $table->dateTime('scan_keluar_efektif')->nullable();
             $table->string('status_keluar', 20)->index()->nullable();
 
-            $table->integer('jam_kerja_murni')->nullable()->default(0);
-            $table->integer('jam_kerja_efektif')->nullable()->default(0);
+            $table->integer('jam_kerja_murni')->default(0);
+            $table->integer('jam_kerja_efektif')->default(0);
 
-            $table->integer('istirahat_murni')->nullable()->default(0);
-            $table->integer('istirahat_efektif')->nullable()->default(0);
+            $table->integer('istirahat_murni')->default(0);
+            $table->integer('istirahat_efektif')->default(0);
 
-            $table->integer('lembur_murni')->nullable()->default(0);
-            $table->integer('lembur_efektif')->nullable()->default(0);
-            $table->integer('lembur_akumulasi')->nullable()->default(0);
+            $table->integer('lembur_murni')->default(0);
+            $table->integer('lembur_efektif')->default(0);
+            $table->integer('lembur_akumulasi')->default(0);
 
-            $table->integer('jam_hilang_murni')->nullable()->default(0);
-            $table->integer('jam_hilang_efektif')->nullable()->default(0);
+            $table->integer('jam_hilang_murni')->default(0);
+            $table->integer('jam_hilang_efektif')->default(0);
+            $table->integer('potongan')->default(0);
 
             $table->boolean('is_cuti')->default(false)->index();
             $table->boolean('is_izin')->default(false)->index();
             $table->boolean('is_sakit')->default(false)->index();
             $table->boolean('is_lembur')->default(false)->index();
+            $table->boolean('is_verifikasi')->default(false)->index();
+            $table->boolean('is_lembur_libur')->default(false)->index();
 
             $table->boolean('uk')->default(true)->index();
             $table->boolean('um')->default(true)->index();
@@ -54,8 +57,6 @@ return new class extends Migration
             $table->boolean('uml')->default(false)->index();
             $table->boolean('utl')->default(false)->index();
             $table->boolean('umll')->default(false)->index();
-
-
 
             $table->string('keterangan')->nullable();
             $table->timestamps();

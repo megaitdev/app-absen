@@ -12,19 +12,24 @@ class CssController extends Controller
         switch ($page) {
             case "report-employee":
                 return [
-                    // Put path css below here
+                    "library/bootstrap-daterangepicker/daterangepicker.css",
+                    'library/sweetalert2/dist/sweetalert2.min.css',
+                    'library/datatables/dist/css/datatables.min.css',
+                    'library/select2/dist/css/select2.min.css',
+                    "library/timepicker/jquery.timepicker.min.css",
+                ];
+            case "schedule-tambah":
+                return [
+                    'library/select2/dist/css/select2.min.css',
+                ];
+            case "report-pic":
+                return [
                     "library/bootstrap-daterangepicker/daterangepicker.css",
                     'library/sweetalert2/dist/sweetalert2.min.css',
                     'library/datatables/dist/css/datatables.min.css',
                 ];
-            case "schedule-tambah":
-                return [
-                    // Put path css below here
-                    'library/select2/dist/css/select2.min.css',
-                ];
             case "report":
                 return [
-                    // Put path css below here
                     "library/bootstrap-daterangepicker/daterangepicker.css",
                     'library/sweetalert2/dist/sweetalert2.min.css',
                     'library/datatables/dist/css/datatables.min.css',
@@ -32,33 +37,34 @@ class CssController extends Controller
                 ];
             case "need-update":
                 return [
-                    // Put path css below here
                     'library/datatables/dist/css/datatables.min.css',
                     'library/select2/dist/css/select2.min.css',
                 ];
             case "employee":
                 return [
-                    // Put path css below here
                     'library/sweetalert2/dist/sweetalert2.min.css',
                     'library/datatables/dist/css/datatables.min.css',
                 ];
             case "shift-tambah":
                 return [
-                    // Put path css below here
-                    'library/bootstrap-timepicker/css/bootstrap-timepicker.css', // Library timepicker
-                    "library/bootstrap-daterangepicker/daterangepicker.css",     // Library daterangepicker
+                    'library/bootstrap-timepicker/css/bootstrap-timepicker.css',
+                    "library/bootstrap-daterangepicker/daterangepicker.css",
                 ];
             case "holidays-tambah":
                 return [
-                    // Put path css below here
-                    "library/bootstrap-daterangepicker/daterangepicker.css",     // Library daterangepicker
+                    "library/bootstrap-daterangepicker/daterangepicker.css",
+                ];
+            case "pic-tambah":
+                return [
+                    'library/select2/dist/css/select2.min.css',
+                    'library/sweetalert2/dist/sweetalert2.min.css',
+                    'library/datatables/dist/css/datatables.min.css',
                 ];
             case "settings":
                 return [
-                    // Put path css below here
                     'library/select2/dist/css/select2.min.css',
-                    'library/bootstrap-timepicker/css/bootstrap-timepicker.css', // Library timepicker
-                    "library/bootstrap-daterangepicker/daterangepicker.css",     // Library daterangepicker
+                    'library/bootstrap-timepicker/css/bootstrap-timepicker.css',
+                    "library/bootstrap-daterangepicker/daterangepicker.css",
                     'library/sweetalert2/dist/sweetalert2.min.css',
                     'library/yearpicker/dist/yearpicker.css',
                     'library/datatables/dist/css/datatables.min.css',
@@ -67,7 +73,6 @@ class CssController extends Controller
 
             default:
                 return [
-                    // Put path css below here
                     'css/custom.css'
                 ];
         }

@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Unit extends Model
 {
     use HasFactory;
-    protected $connection = 'mysql_hrd';
+    protected $connection = 'mysql';
+    protected $table = 'hrd_units';
     protected $guarded = ['id'];
 
     public function report_employees()

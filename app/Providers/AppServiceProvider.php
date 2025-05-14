@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\DB;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,7 +24,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Set the default string length for database schemas
         Schema::defaultStringLength(191);
+
+        // Use Bootstrap for pagination views
+        Paginator::useBootstrap();
+
+        // Set timezone default ke Jakarta
+        date_default_timezone_set('Asia/Jakarta');
+
+        // Konfigurasi Carbon untuk Indonesia
+        Carbon::setLocale('id');
+
+        // Pastikan timestamps disimpan dalam timezone lokal
+        DB::statement("SET time_zone = '+07:00'");
     }
 }

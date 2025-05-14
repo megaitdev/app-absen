@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EmployeeFtm;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -18,6 +16,11 @@ class DashboardController extends Controller
             'csses' => ['css/custom.css']
         ];
 
-        return view('dashboard', $data);
+        switch (Auth::user()->role) {
+            case 'admin':
+                return view('dashboard', $data);
+            case 'pic':
+                return view('pic.dashboard', $data);
+        }
     }
 }

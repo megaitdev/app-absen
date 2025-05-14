@@ -7,14 +7,12 @@ function none() {
 }
 var CSRF_TOKEN = $('meta[name="csrf-token"]').attr("content");
 
-// function getNotification(user_id = null) {
-//     $.ajax({
-//         url: base_url() + `ajax/get-notification`,
-//         type: "GET",
-//         cache: false,
-//         success: function (res) {
-//             console.log(res);
-//         },
-//     });
-// }
-// getNotification();
+function firstUp(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+moment.tz.add([
+    "Asia/Jakarta|LMT BMT +0720 +0730 WIB|-77.c -77.c -7k -7u -70|01232425|-1Q0Tk luM0 mPzO 8vWu 6kpu 4PXu xhcu|31e6",
+]);
+
+moment.tz.setDefault("Asia/Jakarta");

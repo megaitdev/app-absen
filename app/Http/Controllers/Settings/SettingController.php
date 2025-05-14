@@ -5,13 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Resource\CssController;
 use App\Http\Controllers\Resource\ScriptController;
 use App\Http\Controllers\Controller;
-use App\Models\Employee;
-use App\Models\EmployeeLaporanHarian;
-use App\Models\Shift;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 
 class SettingController extends Controller
@@ -33,28 +27,6 @@ class SettingController extends Controller
             'csses' => $this->css->getListCss('settings'),
             'settings_tab' => $this->syncSettingsTab(),
         ];
-
-
-        // $scanIn = "2024-10-07 06:28:00";
-        // $scanIn = Carbon::createFromFormat('Y-m-d H:i:s', $scanIn)->format('Y-m-d H:i:s');
-        // $date = '07.00';
-        // $date = Carbon::createFromFormat('H.i', $date)->format('Y-m-d H:i:s');
-
-        // $isLessThanDate = function ($scanIn, $date) {
-        //     return Carbon::createFromFormat('Y-m-d H:i:s', $scanIn)->lt($date);
-        // };
-
-        // $diffInMinutes = function ($scanIn, $date) {
-        //     return Carbon::createFromFormat('Y-m-d H:i:s', $scanIn)->diffInMinutes($date);
-        // };
-
-        // $convertTo15Minutes = function ($minutes) {
-        //     return floor($minutes / 15) * 15;
-        // };
-
-        // dump($isLessThanDate($scanIn, $date));
-        // dump($diffInMinutes($scanIn, $date));
-        // dd($convertTo15Minutes($diffInMinutes($scanIn, $date)));
         return view('settings', $data);
     }
 

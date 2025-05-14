@@ -7,4 +7,7 @@ return [
      * be the path to the web server's PHP binary like php-fpm.
      */
     'php_path' => env('LARAVEL_ASYNC_PHP_PATH'),
+    'default' => [
+        'timeout' => 7200, // Set the timeout to 30 seconds (or whatever you prefer)
+    ],
 ];

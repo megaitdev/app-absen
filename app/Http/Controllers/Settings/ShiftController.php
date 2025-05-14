@@ -126,7 +126,7 @@ class ShiftController extends Controller
     function datatableShift()
     {
         return DataTables()->of(
-            Shift::query()
+            Shift::query()->where('id', '>', 5)
         )
             ->addIndexColumn()
             ->addColumn('action', function ($row) {

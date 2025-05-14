@@ -15,12 +15,21 @@ use App\Models\mak_hrd\Employee;
 use App\Models\mak_hrd\Unit;
 use App\Models\ftm\AttLog;
 use App\Http\Controllers\Controller;
-use App\Jobs\generateReportJob;
+use App\Models\Holiday;
+use App\Models\Izin;
+use App\Models\JenisCuti;
+use App\Models\JenisIzin;
+use App\Models\Lembur;
 use App\Models\Progress;
 use App\Models\Schedule;
+use App\Models\VerifikasiAbsen;
 use Carbon\CarbonPeriod;
-use Illuminate\Support\Facades\Http;
-use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
+use DateInterval;
+use DatePeriod;
+use DateTime;
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use SaeedVaziry\LaravelAsync\Facades\AsyncHandler;
 
 class ReportController extends Controller
@@ -39,12 +48,17 @@ class ReportController extends Controller
             'slug' => 'report',
             'scripts' => $this->script->getListScript('report'),
             'csses' => $this->css->getListCss('report'),
-            'report_tab' => $this->syncReportTab(),
             'periode' => $this->getPeriodeReport(),
         ];
 
-
-        return view('report.report', $data);
+        if (Auth::user()->role === 'admin') {
+            $data['report_tab'] = $this->syncReportTab();
+            return view('report.report', $data);
+        } else if (Auth::user()->role === 'pic') {
+            $data['scripts'] = $this->script->getListScript('report-pic');
+            $data['csses'] = $this->css->getListCss('report-pic');
+            return view('report.pic.report', $data);
+        }
     }
 
     public function setTabActive($tab)
@@ -52,44 +66,6 @@ class ReportController extends Controller
         Session::put('report-tab-' . Auth::user()->id, $tab);
         return response()->json(Session::get('report-tab-' . Auth::user()->id));
     }
-
-    function getPeriodeReport()
-    {
-        $periode = Session::get('periode_' . Auth::user()->id);
-        if (!$periode) {
-            $defaultStart = Carbon::now()->subMonth()->startOfMonth()->day(21)->toDateString();
-            $defaultEnd = Carbon::now()->day(20)->toDateString();
-            $name = $this->getPeriodeName($defaultStart, $defaultEnd);
-            Session::put('periode_' . Auth::user()->id, ['start' => $defaultStart, 'end' => $defaultEnd, 'name' => $name]);
-        }
-        return (object)Session::get('periode_' . Auth::user()->id);
-    }
-
-    function setPeriodeReport(Request $request)
-    {
-        $periode  = $request->periode;
-        Session::put('periode_' . Auth::user()->id, ['start' => $periode['start'], 'end' => $periode['end'], 'name' => $periode['name']]);
-        return response()->json(Session::get('periode_' . Auth::user()->id));
-    }
-
-    private function getPeriodeName(string $start, string $end): string
-    {
-        $startDate = new Carbon($start);
-        $endDate = new Carbon($end);
-
-        $startMonth = $startDate->month;
-        $endMonth = $endDate->month;
-
-        $name = 'Custom Range';
-
-        if ($endMonth - $startMonth === 1 && $startDate->day === 21 && $endDate->day === 20) {
-            $name = $endDate->locale('id_ID')->monthName;
-        }
-
-        return $name;
-    }
-
-
 
     function datatableListUnit()
     {
@@ -295,131 +271,366 @@ class ReportController extends Controller
         // return $data_report;
     }
 
-    function generateReportEmployee($employee_id)
+
+    function hitungJamKerjaMurni($scan_masuk, $scan_keluar)
     {
-        $periode = $this->getPeriodeReport();
-        $start_date = $periode->start;
-        $end_date = $periode->end;
+        $scan_masuk = strlen($scan_masuk) == 19 ? substr($scan_masuk, -8) : substr($scan_masuk, -5);
+        $scan_keluar = strlen($scan_keluar) == 19 ? substr($scan_keluar, -8) : substr($scan_keluar, -5);
 
-        // dd($periode);
+        $scan_masuk_time = Carbon::parse($scan_masuk);
+        $scan_keluar_time = Carbon::parse($scan_keluar);
 
-        $list_employees = Employee::where('id', $employee_id)->get('pin')->pluck('pin')->toArray();
-        $employees = Employee::where('id', $employee_id)->get(['nama', 'pin', 'id', 'pangkat_id']);
+        $total_menit_kerja = $scan_masuk_time->diffInMinutes($scan_keluar_time);
+        $menit_istirahat = 0;
 
-        $shifts = Schedule::where('is_default', 1)->first()->hasShifts($start_date, $end_date);
+        $istirahat_times = [
+            ['start' => '12:00', 'end' => '12:45'],
+            ['start' => '18:00', 'end' => '18:45']
+        ];
 
-        $scan_logs = AttLog::whereBetween('scan_date', [$start_date, $end_date])->whereIn('pin', $list_employees)->orderBy('scan_date')->get()->map(function ($scan_log) {
-            $scan_log->date = Carbon::parse($scan_log->scan_date)->format('Y-m-d');
-            return $scan_log;
+        foreach ($istirahat_times as $istirahat) {
+            $istirahat_start = Carbon::parse($istirahat['start']);
+            $istirahat_end = Carbon::parse($istirahat['end']);
+            if ($scan_masuk_time < $istirahat_start && $scan_keluar_time > $istirahat_end) {
+                $menit_istirahat += $istirahat_start->diffInMinutes($istirahat_end);
+            }
+        }
+        $jam_kerja_murni = $total_menit_kerja - $menit_istirahat;
+        return $jam_kerja_murni;
+    }
+
+    function hitungJamKerjaEfektif($jam_kerja_murni)
+    {
+        // Hitung jumlah periode 30 menit
+        $periode_30_menit = floor($jam_kerja_murni / 30);
+
+        // Hitung sisa menit
+        $sisa_menit = $jam_kerja_murni % 30;
+
+        // Jika sisa menit lebih dari 0, tambahkan satu periode
+        if ($sisa_menit > 0) {
+            $periode_30_menit++;
+        }
+    }
+
+    function getWeekendDates($startDate, $endDate)
+    {
+        $weekendDates = [];
+        $datePeriod = new DatePeriod(
+            new DateTime($startDate),
+            new DateInterval('P1D'),
+            new DateTime($endDate)
+        );
+
+        foreach ($datePeriod as $date) {
+            if ($date->format('N') >= 6) {
+                $weekendDates[] = $date->format('Y-m-d');
+            }
+        }
+        return $weekendDates;
+    }
+
+    function getHolidaysInPeriod($startDate, $endDate)
+    {
+        return response()->json(Holiday::whereBetween('date', [$startDate, $endDate])->get(['date', 'note'])->keyBy('date'));
+    }
+
+
+
+    function generateReportEmployee($employee_id, $periode = null)
+    {
+        if (!$periode) {
+            $periode = $this->getPeriodeReport();
+        }
+        $startDate = $periode->start;
+        $endDate = $periode->end;
+        // $startDate = '2025-01-24';
+        // $endDate = '2025-01-24';
+
+        $employee = Employee::where('id', $employee_id)->first(['nama', 'pin', 'id', 'pangkat_id']);
+        if (!$employee) {
+            throw new Exception('Employee not found');
+        }
+
+        $employeePin = $employee->pin;
+
+        // $shifts = Schedule::where('is_default', 1)->first()->hasShifts($startDate, $endDate);
+
+
+        $shifts = $employee->shifts($startDate, $endDate);
+        $holidays = Holiday::whereBetween('date', [$startDate, $endDate])->pluck('date')->toArray();
+        $izins = Izin::where('employee_id', $employee_id)->whereBetween('date', [$startDate, $endDate])->get()->keyBy('date');
+
+        Report::whereIn('date', $holidays)->where('is_lembur_libur', 0)->delete();
+        $tempVerifikasi = [];
+        VerifikasiAbsen::whereBetween('date', [$startDate, $endDate])
+            ->where('employee_id', $employee_id)
+            ->get(['date', 'data_scan'])
+            ->map(function ($ver) use (&$tempVerifikasi) {
+                $data = json_decode($ver->data_scan);
+                $tempVerifikasi = array_merge($tempVerifikasi, $data);
+                return $ver;
+            });
+        $tempLembur = [];
+        Lembur::whereBetween('date', [$startDate, $endDate])
+            ->where('employee_id', $employee_id)
+            ->get(['date', 'data_scan', 'lembur'])
+            ->map(function ($lembur) use (&$tempLembur) {
+                $data = json_decode($lembur->data_scan);
+                $data[0]->lembur = $lembur->lembur;
+                $tempLembur = array_merge($tempLembur, $data);
+                return $lembur;
+            });
+        $tempIzin = [];
+        Izin::whereBetween('date', [$startDate, $endDate])
+            ->where('employee_id', $employee_id)
+            ->where('data_scan', '!=', null)
+            ->get(['date', 'data_scan'])
+            ->map(function ($izin) use (&$tempIzin) {
+                $data = json_decode($izin->data_scan);
+                $tempIzin = array_merge($tempIzin, $data);
+                return $izin;
+            });
+
+
+
+        // Filter out holiday shifts
+        $shifts = array_filter($shifts, function ($shift) use ($holidays) {
+            return !in_array($shift->date, $holidays);
         });
-        // $scan_log = $scan_logs->where('pin', 1030197)->where('date', '2024-12-03');
-        // dd($scan_logs);
-        $data_report = [];
 
-        foreach ($employees as $index_employee => $employee) {
-            $data_report[$employee->nama] = [];
-            foreach ($shifts as $index_shift => $shift) {
-                $report = [
-                    'nama_karyawan' => $employee->nama,
-                    'employee_id' => $employee->id,
-                    'pin' => $employee->pin,
-                    'date' => $shift->date,
-                    'day' => $shift->day,
-                    'shift_id' => $shift->id,
-                    'status' => 'Tidak Hadir',
-                ];
+        $endDateForAttLog = (new Carbon($endDate))->addDay(1)->format('Y-m-d');
+        $scanLogs = AttLog::whereBetween('scan_date', [$startDate, $endDateForAttLog])
+            ->where('pin', $employeePin)
+            ->orderBy('scan_date')
+            ->get(['scan_date'])
+            ->map(function ($scanLog) {
+                $scanLog->date = Carbon::parse($scanLog->scan_date)->format('Y-m-d');
+                return $scanLog;
+            });
 
-                $scan_log = $scan_logs->where('pin', $employee->pin)->where('date', $shift->date);
-                if ($scan_log->isNotEmpty()) {
-                    $check = $this->getCheckInCheckOut($scan_log, $shift);
+
+
+
+
+        $dataReport = [];
+        foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+            $day = $date->locale('id')->translatedFormat('l');
+            $date = $date->format('Y-m-d');
+            $report = [
+                'nama_karyawan' => $employee->nama,
+                'employee_id' => $employee->id,
+                'pin' => $employee->pin,
+                'date' => $date,
+                'day' => $day,
+                'status' => 'Tidak Hadir',
+                "scan_masuk_murni" => null,
+                "scan_keluar_murni" => null,
+                "scan_masuk_efektif" => null,
+                "scan_keluar_efektif" => null,
+                "status_masuk" => null,
+                "status_keluar" => null,
+                'is_cuti' => 0,
+                'is_izin' => 0,
+                'is_sakit' => 0,
+                'potongan' => 0,
+                'is_lembur' => 0,
+                'is_verifikasi' => 0,
+                'is_lembur_libur' => 0,
+                'lembur_akumulasi' => 0,
+            ];
+
+            $scanLogForDate = $scanLogs->where('date', $date);
+
+            // Verifikasi
+            $verifikasiForDate = array_values(array_filter($tempVerifikasi, function ($item) use ($date) {
+                return $item->date == $date;
+            }));
+
+            if ($verifikasiForDate) {
+                $report['is_verifikasi'] = 1;
+            }
+
+            $scanLogForDate = $scanLogForDate->concat($verifikasiForDate);
+
+            // Lembur
+            $lemburForDate = array_values(array_filter($tempLembur, function ($item) use ($date) {
+                return $item->date == $date;
+            }));
+
+            if ($lemburForDate) {
+                if ($lemburForDate[0]->lembur == 'terusan') {
+                    $report['is_lembur'] = 1;
+                } else {
+                    $report['is_lembur_libur'] = 1;
+                }
+            }
+
+            $scanLogForDate = $scanLogForDate->concat($lemburForDate);
+
+            // Izin
+            $izinForDate = array_values(array_filter($tempIzin, function ($item) use ($date) {
+                return $item->date == $date;
+            }));
+
+            $scanLogForDate = $scanLogForDate->concat($izinForDate);
+
+            if ($izins->has($date)) {
+                $izinForDate = $izins[$date];
+                $report['is_izin'] = 1;
+            }
+
+            $shift = $shifts[$date] ?? null;
+
+            if (!$shift) {
+                // Tanpa Shift
+                $report['shift_id'] = null;
+                if ($scanLogForDate->isNotEmpty()) {
+                    $check = $this->getCheckInCheckOutWithoutShift($scanLogForDate);
+                    $report['status'] = 'Hadir';
+                    $report['scan_masuk_murni'] = $check->in;
+                    $report['scan_keluar_murni'] = $check->out;
+                    $durasiLembur = $this->hitungJamKerjaMurni($check->in, $check->out);
+                    $report['jam_kerja_murni'] = $durasiLembur;
+                    $report['lembur_murni'] = $durasiLembur;
+                    $report['jam_kerja_efektif'] = floor($durasiLembur / 30) * 30;
+                    $report['lembur_efektif'] = floor($durasiLembur / 30) * 30;
+                    if (!empty($lemburForDate)) {
+                        $report['is_lembur_libur'] = 1;
+                        $report['shift_id'] = $this->shiftLemburID();
+                        $report['utl'] = 1;
+                        $report['umll'] = $durasiLembur > 240 ? 1 : 0;
+                    }
+                    $report['uk'] = 0;
+                    $report['um'] = 0;
+                    $report['ut'] = 0;
+                } else {
+                    continue;
+                }
+            } else {
+                $report['shift_id'] = $shift->id;
+                if ($scanLogForDate->isNotEmpty()) {
+                    $check = $this->getCheckInCheckOut($scanLogForDate, $shift);
                     $report['status'] = 'Hadir';
                     $report['scan_masuk_murni'] = $check->in;
                     $report['scan_keluar_murni'] = $check->out;
                     $report['scan_masuk_efektif'] = $shift->jam_masuk;
                     $report['scan_keluar_efektif'] = $shift->jam_keluar;
-                    $jam_hilang_murni = 0;
-                    $jam_hilang_efektif = 0;
-
+                    $jamHilangMurni = 0;
+                    $jamHilangEfektif = 0;
 
                     $status = $this->getStatusCheckInCheckOut($check, $shift);
+                    $jam_selesai_istirahat = Carbon::parse($shift->jam_selesai_istirahat);
 
+                    // dd($jam_selesai_istirahat->lt($check->out));
                     $report['status_masuk'] = $status->check_in;
                     $report['status_keluar'] = $status->check_out;
 
                     if ($status->check_in != 'Tepat Waktu') {
                         $terlambat = $this->getJamHilangTerlambat($check->in, $shift);
-                        $jam_hilang_efektif += $terlambat->efektif;
-                        $jam_hilang_murni += $terlambat->murni;
-                        $report['scan_masuk_efektif'] = Carbon::parse($shift->jam_masuk)->addMinutes($terlambat->efektif)->format('Y-m-d H:i:s');
+                        $jamHilangEfektif += $terlambat->efektif;
+                        $jamHilangMurni += $terlambat->murni;
+                        $report['scan_masuk_efektif'] = Carbon::parse($shift->jam_masuk)
+                            ->addMinutes($terlambat->efektif)
+                            ->format('Y-m-d H:i:s');
                     }
+
                     if ($status->check_out != 'Tepat Waktu') {
-                        $pulang_cepat = $this->getJamHilangPulangCepat($check->out, $shift);
-                        $jam_hilang_efektif += $pulang_cepat->efektif;
-                        $jam_hilang_murni += $pulang_cepat->murni;
-                        $report['scan_keluar_efektif'] = Carbon::parse($shift->jam_keluar)->subMinutes($pulang_cepat->efektif)->format('Y-m-d H:i:s');
+                        $pulangCepat = $this->getJamHilangPulangCepat($check->out, $shift);
+                        if ($check->out !== null) {
+                            if ($jam_selesai_istirahat->gt($check->out)) {
+                                $jamHilangMurni -= $shift->total_menit_istirahat;
+                                $jamHilangEfektif -= $shift->total_menit_istirahat;
+                            }
+                        }
+                        $jamHilangEfektif += $pulangCepat->efektif;
+                        $jamHilangMurni += $pulangCepat->murni;
+
+                        $report['scan_keluar_efektif'] = Carbon::parse($shift->jam_keluar)
+                            ->subMinutes($pulangCepat->efektif)
+                            ->format('Y-m-d H:i:s');
                     }
 
                     if ($status->check_in == 'Belum Scan Masuk' || $status->check_out == 'Belum Scan Keluar') {
-                        $jam_hilang_murni = $shift->total_menit_kerja;
-                        $jam_hilang_efektif = $shift->total_menit_kerja;
+                        $jamHilangMurni = $shift->total_menit_kerja;
+                        $jamHilangEfektif = $shift->total_menit_kerja;
                     }
 
                     $report['istirahat_murni'] = $shift->total_menit_istirahat;
                     $report['istirahat_efektif'] = $shift->total_menit_istirahat;
 
-                    $report['jam_hilang_murni'] = $jam_hilang_murni;
-                    $report['jam_hilang_efektif'] = $jam_hilang_efektif;
-
-                    $report['jam_kerja_murni'] = $shift->total_menit_kerja - $jam_hilang_murni;
-                    if ($check->in && $check->out) {
-                        $report['jam_kerja_murni'] =
-                            floor(Carbon::parse($check->in)->diffInMinutes(Carbon::parse($check->out))
-                                - $shift->total_menit_istirahat);
+                    $report['jam_hilang_murni'] = $jamHilangMurni;
+                    $report['jam_hilang_efektif'] = $jamHilangEfektif;
+                    if ($employee->pangkat_id == 1) {
+                        $report['potongan'] = $jamHilangEfektif;
+                        if ($izinForDate && $izinForDate->is_full_day == 0) {
+                            $report['potongan'] = $jamHilangEfektif + $izinForDate->jam_izin;
+                        }
                     }
 
-                    $report['jam_kerja_efektif'] = $shift->total_menit_kerja - $jam_hilang_efektif;
+                    $report['jam_kerja_murni'] = $shift->total_menit_kerja - $jamHilangMurni;
+                    if ($check->in && $check->out) {
+                        $report['jam_kerja_murni'] = floor(Carbon::parse($check->in)->diffInMinutes($check->out)) - $shift->total_menit_istirahat;
+                        if ($jam_selesai_istirahat->gt($check->out)) {
+                            $report['jam_kerja_murni'] = floor(Carbon::parse($check->in)->diffInMinutes($check->out));
+                        }
+                    }
+
+                    $report['jam_kerja_efektif'] = $shift->total_menit_kerja - $jamHilangEfektif;
 
                     if ($status->check_out == 'Tepat Waktu') {
                         $lembur = $this->getJamLemburTerusan($check->out, $shift);
                         $report['lembur_murni'] = $lembur->murni;
+                        if (Carbon::parse($check->out)->gt(Carbon::parse($date . ' 18:45'))) {
+                            $lembur->efektif -= 60;
+                        }
                         $report['lembur_efektif'] = $lembur->efektif;
-                        $report['lembur_akumulasi'] = $this->getJamLemburAkumulasi($lembur->efektif, $shift, $employee->pangkat_id);
+                        $report['lembur_akumulasi'] = $this->getJamLemburAkumulasi($lembur->efektif, 'Terusan', $employee->pangkat_id);
                     }
 
-                    // Check jika karyawan berpangkat operator
+                    // Check if employee is an operator
                     if ($employee->pangkat_id == 1 && $report['jam_kerja_efektif'] <= 240) {
+                        $report['uk'] = 0;
+                        $report['um'] = 0;
+                    }
+                } else {
+                    if ($employee->pangkat_id == 1) {
                         $report['uk'] = 0;
                         $report['um'] = 0;
                         $report['ut'] = 0;
                     }
-                } else {
-                    $report['uk'] = 0;
-                    $report['um'] = 0;
-                    $report['ut'] = 0;
-                }
+                    $report['jam_hilang_murni'] = $shift->total_menit_kerja;
+                    $report['jam_hilang_efektif'] = $shift->total_menit_kerja;
+                    if ($employee->pangkat_id == 1) {
+                        $report['potongan'] = $shift->total_menit_kerja;
+                    }
 
-                $data_report[$employee->nama][$shift->date] = $report;
-                Report::updateOrCreate(
-                    [
-                        'date' => $shift->date,
-                        'pin' => $employee->pin,
-                    ],
-                    $report
-                );
+                    // End of IF $scanLogForDate->isNotEmpty()
+                }
             }
-            Progress::updateOrCreate(
+            Report::updateOrCreate(
                 [
-                    'name' => 'progress-generate-report',
+                    'date' => $date,
+                    'pin' => $employee->pin,
                 ],
-                [
-                    'total' => count($employees),
-                    'steps' => $index_employee + 1,
-                    'persentase' => ($index_employee + 1) / count($employees) * 100
-                ]
+                $report
             );
-            info("Progress: " . ($index_employee + 1) . " / " . count($employees));
+            // dump($report);
+            $dataReport[$date] = $report;
         }
-        return $data_report;
+
+        try {
+            $response = response()->json([
+                'success' => true,
+                'data' => $dataReport
+            ]);
+            return $response;
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     function generateReport()
@@ -444,13 +655,14 @@ class ReportController extends Controller
     }
 
 
-    function getJamLemburAkumulasi($jam_lembur_efektif, $shift, $pangkat_id)
+    function getJamLemburAkumulasi($jam_lembur_efektif, $lembur, $pangkat_id)
     {
+        $jam_lembur_efektif = round($jam_lembur_efektif / 30) * 30;
         $jam_lembur =  floor($jam_lembur_efektif / 60); // Konversi menit ke jam penuh
         $sisa_menit =  $jam_lembur_efektif % 60; // Sisa menit
         $jam_lembur_akumulasi = 0;
         if ($pangkat_id == 1) {
-            switch ($shift->day) {
+            switch ($lembur) {
                 case 'Terusan':
                     $lembur_pertama = min(60, $jam_lembur_efektif);
                     $lembur_selanjutnya = max(0, $jam_lembur_efektif - 60);
@@ -483,6 +695,8 @@ class ReportController extends Controller
                 default:
                     return $jam_lembur_akumulasi;
             }
+        } else {
+            return $jam_lembur_efektif;
         }
     }
 
@@ -501,10 +715,13 @@ class ReportController extends Controller
 
     function getJamLemburTerusan($scan_out, $shift)
     {
-        $murni = (int)Carbon::parse($shift->jam_keluar)->diffInMinutes($scan_out);
+
+        $murni = (int)Carbon::parse($shift->jam_keluar)->diffInMinutes($scan_out) - 15;
         $efektif = 0;
-        if ($murni >= 75) {
+        if ($murni >= 60) {
             $efektif = $murni - ($murni % 30);
+        } else {
+            $murni = 0;
         }
         return (object) ['murni' => $murni, 'efektif' => $efektif];
     }
@@ -526,11 +743,48 @@ class ReportController extends Controller
 
     function getStatusCheckInCheckOut($check, $shift)
     {
-        $check_in = $check && $check->in ? Carbon::parse($check->in)->lte($shift->jam_masuk) ? 'Tepat Waktu' : 'Terlambat' : 'Belum Scan Masuk';
-        $check_out = $check && $check->out ? Carbon::parse($check->out)->gte($shift->jam_keluar) ? 'Tepat Waktu' : 'Pulang Cepat' : 'Belum Scan Keluar';
+        $check_in = $check && $check->in ? (Carbon::parse($check->in)->format('H:i') <= Carbon::parse($shift->jam_masuk)->format('H:i') ? 'Tepat Waktu' : 'Terlambat') : 'Belum Scan Masuk';
+        $check_out = $check && $check->out ? (Carbon::parse($check->out)->format('H:i') >= Carbon::parse($shift->jam_keluar)->format('H:i') ? 'Tepat Waktu' : 'Pulang Cepat') : 'Belum Scan Keluar';
 
         return (object) compact('check_in', 'check_out');
     }
+
+    function getCheckInCheckOutWithoutShift($scan_logs)
+    {
+        $firstLog = $scan_logs->first();
+        $lastLog = $scan_logs->last();
+
+        if ($firstLog && $lastLog) {
+            $jamFirst = Carbon::parse($firstLog->scan_date)->format('H');
+            $jamLast = Carbon::parse($lastLog->scan_date)->format('H');
+            $jarakWaktu = abs(Carbon::parse($lastLog->scan_date)->diffInHours(Carbon::parse($firstLog->scan_date)));
+
+            if ($jarakWaktu <= 1) {
+                if ($jamFirst < 12) {
+                    $check_in = $firstLog->scan_date;
+                    $check_out = null;
+                } elseif ($jamLast < 12) {
+                    $check_in = null;
+                    $check_out = $lastLog->scan_date;
+                } else {
+                    $check_in = $firstLog->scan_date;
+                    $check_out = $lastLog->scan_date;
+                }
+            } else {
+                $check_in = $firstLog->scan_date;
+                $check_out = $lastLog->scan_date;
+            }
+        } else {
+            $check_in = null;
+            $check_out = null;
+        }
+
+        return (object) [
+            'in' => $check_in,
+            'out' => $check_out
+        ];
+    }
+
 
     function getCheckInCheckOut($scan_logs, $shift)
     {
@@ -585,6 +839,12 @@ class ReportController extends Controller
         }
         if ($farthest_scan_out_after) {
             $result['out'] = $farthest_scan_out_after['scan_date'];
+        }
+        if ($scan_logs->where('jenis', 'scan_masuk')->first()) {
+            $result['in'] = $scan_logs->where('jenis', 'scan_masuk')->first()->scan_date;
+        }
+        if ($scan_logs->where('jenis', 'scan_keluar')->first()) {
+            $result['out'] = $scan_logs->where('jenis', 'scan_keluar')->first()->scan_date;
         }
 
         return (object)$result;
@@ -724,7 +984,6 @@ class ReportController extends Controller
         return response()->json(['total_processed' => $totalRecords]);
     }
 
-
     function datatableListEmployee()
     {
         return DataTables()->of(
@@ -746,7 +1005,6 @@ class ReportController extends Controller
 
     function reportEmployee(Employee $employee)
     {
-
         $data = [
             'title' => 'Report Employee',
             'slug' => 'report',
@@ -754,33 +1012,45 @@ class ReportController extends Controller
             'csses' => $this->css->getListCss('report-employee'),
             'report_tab' => $this->syncReportTab(),
             'periode' => $this->getPeriodeReport(),
-            'employee' => $employee
+            'employee' => $employee,
+            'jenis_cuti' => JenisCuti::all(),
+            'jenis_izin' => JenisIzin::all(),
         ];
-
-
         return view('report.report-employee', $data);
     }
 
     function datatableReportEmployee($employee_id)
     {
-
         $periode = $this->getPeriodeReport();
         $reports = Report::whereBetween('date', [$periode->start, $periode->end])
             ->where('employee_id', $employee_id)
             ->with('shift')
+            ->with(['izin' => function ($query) use ($employee_id) {
+                $query->where('employee_id', $employee_id);
+            }])
+            ->with(['cuti' => function ($query) use ($employee_id) {
+                $query->where('employee_id', $employee_id);
+            }])
+            ->with(['lembur' => function ($query) use ($employee_id) {
+                $query->where('employee_id', $employee_id);
+            }])
+            ->with(['verifikasi' => function ($query) use ($employee_id) {
+                $query->where('employee_id', $employee_id);
+            }])
             ->get()
             ->keyBy('date');
-
 
 
         $dataReport = [];
         foreach (CarbonPeriod::create($periode->start, $periode->end) as $date) {
             $date = $date->format('Y-m-d');
             $day = Carbon::parse($date)->locale('id_ID')->isoFormat('dddd');
-
             $dataReport[$date] = [
                 'tanggal' => $day . ', ' . $date,
+                'date' => $date,
                 'shift' => null,
+                'verifikasi_id' => null,
+                'verifikasi' => null,
                 'jam_masuk' => null,
                 'jam_keluar' => null,
                 'scan_masuk' => null,
@@ -791,85 +1061,62 @@ class ReportController extends Controller
                 'jam_hilang_efektif' => null,
                 'lembur_murni' => null,
                 'lembur_efektif' => null,
+                'durasi_lembur' => null,
                 'status' => null,
                 'keterangan' => null,
-                'verifikasi' => '<button type="button" class="btn btn-sm btn-outline-info m-1">Verifikasi</button>',
-                'perizinan' => '<button type="button" class="btn btn-sm btn-outline-warning m-1">Perizinan</button>',
-
+                'tunjangan' => null,
+                'potongan' => null,
+                'is_cuti' => null,
+                'is_lembur_libur' => null,
+                'is_izin' => null,
+                'izin_id' => null,
+                'is_full_day' => null,
+                'report_id' => null,
+                'perizinan' => '<div class="btn btn-sm btn-warning m-1" onclick="javascript:generatePerizinan(`' . $date . '`,0)">Perizinan</div>',
             ];
+
             if (isset($reports[$date])) {
-                $dataReport[$date]['shift'] = $reports[$date]['shift']['name'];
-                $dataReport[$date]['jam_masuk'] = $reports[$date]['shift']['jam_masuk'];
-                $dataReport[$date]['jam_keluar'] = $reports[$date]['shift']['jam_keluar'];
-                $dataReport[$date]['scan_masuk'] = $reports[$date]->scanMasuk();
-                $dataReport[$date]['scan_keluar'] = $reports[$date]->scanKeluar();
-                $dataReport[$date]['durasi_murni'] = $reports[$date]->durasiMurni();
-                $dataReport[$date]['durasi_efektif'] = $reports[$date]->durasiEfektif();
-                $dataReport[$date]['jam_hilang_murni'] = $reports[$date]->jamHilangMurni();
-                $dataReport[$date]['jam_hilang_efektif'] = $reports[$date]->jamHilangEfektif();
-                $dataReport[$date]['lembur_murni'] = $reports[$date]->lemburMurni();
-                $dataReport[$date]['lembur_efektif'] = $reports[$date]->lemburEfektif();
-                $dataReport[$date]['status'] = $reports[$date]['status'];
-                $dataReport[$date]['keterangan'] = $reports[$date]['keterangan'];
-
-
-                // dd($reports[$date]);
+                $dataReport[$date]['shift']                 = $reports[$date]['shift']['name'] ?? null;
+                $dataReport[$date]['jam_masuk']             = $reports[$date]['shift']['jam_masuk'] ?? null;
+                $dataReport[$date]['jam_keluar']            = $reports[$date]['shift']['jam_keluar'] ?? null;
+                $dataReport[$date]['scan_masuk']            = $reports[$date]->scanMasuk();
+                $dataReport[$date]['scan_keluar']           = $reports[$date]->scanKeluar();
+                $dataReport[$date]['durasi_murni']          = $reports[$date]->durasiMurni();
+                $dataReport[$date]['durasi_efektif']        = $reports[$date]->durasiEfektif();
+                $dataReport[$date]['jam_hilang_murni']      = $reports[$date]->jamHilangMurni();
+                $dataReport[$date]['jam_hilang_efektif']    = $reports[$date]->jamHilangEfektif();
+                $dataReport[$date]['lembur_murni']          = $reports[$date]->lemburMurni();
+                $dataReport[$date]['lembur_efektif']        = $reports[$date]->lemburEfektif();
+                $dataReport[$date]['potongan']              = $reports[$date]->potongan();
+                $dataReport[$date]['durasi_lembur']         = $reports[$date]['lembur_efektif'];
+                $dataReport[$date]['status']                = $reports[$date]['status'];
+                $dataReport[$date]['keterangan']            = $reports[$date]['keterangan'];
+                $dataReport[$date]['is_cuti']               = $reports[$date]['is_cuti'];
+                $dataReport[$date]['is_izin']               = $reports[$date]['is_izin'];
+                $dataReport[$date]['cuti_id']               = $reports[$date]['cuti']['id'] ?? null;
+                $dataReport[$date]['is_lembur']             = $reports[$date]['is_lembur'];
+                $dataReport[$date]['is_lembur_libur']       = $reports[$date]['is_lembur_libur'];
+                $dataReport[$date]['lembur_id']             = $reports[$date]['lembur']['id'] ?? null;
+                $dataReport[$date]['verifikasi_id']         = $reports[$date]['verifikasi']['id'] ?? null;
+                $dataReport[$date]['izin_id']               = $reports[$date]['izin']['id'] ?? null;
+                $dataReport[$date]['is_full_day']           = $reports[$date]['izin']['is_full_day'] ?? null;
+                $dataReport[$date]['verifikasi']            = $reports[$date]['verifikasi']['jenis'] ?? null;
+                $dataReport[$date]['report_id']             = $reports[$date]['id'];
+                $dataReport[$date]['ut']                    = $reports[$date]['ut'];
+                $dataReport[$date]['um']                    = $reports[$date]['um'];
+                $dataReport[$date]['uk']                    = $reports[$date]['uk'];
+                $dataReport[$date]['utl']                   = $reports[$date]['utl'];
+                $dataReport[$date]['uml']                   = $reports[$date]['uml'];
+                $dataReport[$date]['umll']                  = $reports[$date]['umll'];
+                $dataReport[$date]['perizinan']             = '<div class="btn btn-sm btn-warning m-1" onclick="javascript:generatePerizinan(`' . $date . '`,' . $reports[$date]['id'] . ')">Perizinan</div>';
             }
         }
-        // dd($dates);
+
         return DataTables()->of(
             $dataReport
         )
             ->addIndexColumn()
-            // ->addColumn('action', function ($row) {
-            //     $action = '<div class="d-flex justify-content-center">';
-            //     $action .= '<div onclick="javascript:generateReportEmployee(' . $row->id . ')" class="btn btn-sm btn-outline-warning m-1"><i class="fas fa-sync-alt"></i></div>';
-            //     $action .= '<a href="' . url('/report/employee/' . $row->id) . '"  class="btn btn-sm btn-outline-success m-1"><i class="fas fa-eye"></i></a>';
-            //     $action .= '</div>';
-            //     return $action;
-            // })
-            ->rawColumns(['verifikasi', 'perizinan'])
+            ->rawColumns(['perizinan'])
             ->make(true);
-    }
-
-
-    function shareUndangan()
-    {
-        $message = "Yth,\n*Abima Nugraha*\n\nبِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ\nٱلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ ٱللَّٰهِ وَبَرَكَاتُهُ\n\nDengan memohon rahmat dan ridha Allah SWT serta tanpa mengurangi rasa hormat, kami mengundang Bapak/Ibu/Saudara/i, teman sekaligus sahabat, untuk berkenan hadir di acara pernikahan kami\n\n*Klik link berikut untuk melihat Undangan pernikahan kami :* https://Emooteinvi.com/deca-bima2?to=Abima%20Nugraha\n\nMerupakan suatu kehormatan dan kebahagiaan apabila Bapak/Ibu/Saudara/i berkenan untuk hadir dan memberikan doa restu di hari bahagia kami.\n\nMohon kesediaannya untuk mengirimkan konfirmasi kehadiran melalui form RSVP yang tersedia.\n\nAtas kehadiran dan do'a restunya kami ucapkan terima kasih.\n\n*Deca & Bima*";
-
-        $file = public_path('xls/undangan-rabi.xlsx');
-        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        $spreadsheet = $reader->load($file);
-        $sheet = $spreadsheet->getActiveSheet();
-        $highestRow = $sheet->getHighestRow();
-
-        // dd($highestRow);
-        for ($row = 2; $row <= $highestRow; $row++) {
-            $nomor_wa = $sheet->getCell("B" . $row)->getValue();
-            dump($nomor_wa);
-            // $this->rabicanSendMessage($nomor_wa, s$message);
-        }
-
-        // return $this->rabicanSendMessage(628989227992, $message);
-    }
-
-    function rabicanSendMessage($nomor_wa, $message)
-    {
-        // Get the Megacan API URL from the environment variable
-        $url_megacan = config('services.megacan.url');
-
-        // Prepare the data payload for the API request
-        $data = [
-            'chatId' => $nomor_wa . '@c.us',
-            "contentType" => "string",
-            "content" => $message
-        ];
-
-        // Send the API request using the HTTP POST method
-        $response = Http::withBody(json_encode($data), 'application/json')
-            ->post($url_megacan . '/client/sendMessage/rabi');
-
-        // Return the response object from the Megacan API
-        return $response->object();
     }
 }

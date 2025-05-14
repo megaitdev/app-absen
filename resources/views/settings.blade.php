@@ -17,10 +17,6 @@
                 <div class="row">
                     <div class="col-lg-12">
                         <ul class="nav nav-pills mb-2" role="tablist">
-                            {{-- <li class="nav-item">
-                                <a class="nav-link nav-link-dark {{ $settings_tab == 'karyawan' ? 'active' : '' }}"
-                                    id="karyawan-tab" data-toggle="tab" href="#karyawan">Karyawan</a>
-                            </li> --}}
                             <li class="nav-item">
                                 <a class="nav-link nav-link-dark {{ $settings_tab == 'shift' ? 'active' : '' }}"
                                     id="shift-tab" data-toggle="tab" href="#shift">Shift</a>
@@ -32,6 +28,14 @@
                             <li class="nav-item">
                                 <a class="nav-link nav-link-dark {{ $settings_tab == 'schedule' ? 'active' : '' }}"
                                     id="schedule-tab" data-toggle="tab" href="#schedule">Schedule</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-dark {{ $settings_tab == 'pic' ? 'active' : '' }}"
+                                    id="pic-tab" data-toggle="tab" href="#pic">PIC</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-dark {{ $settings_tab == 'dasar-jadwal' ? 'active' : '' }}"
+                                    id="dasar-jadwal-tab" data-toggle="tab" href="#dasar-jadwal">Dasar Jadwal</a>
                             </li>
                         </ul>
 
@@ -47,6 +51,14 @@
                             <div class="tab-pane fade {{ $settings_tab == 'schedule' ? 'show active' : '' }}" id="schedule"
                                 role="tabpanel">
                                 @include('settings.tab-schedule')
+                            </div>
+                            <div class="tab-pane fade {{ $settings_tab == 'pic' ? 'show active' : '' }}" id="pic"
+                                role="tabpanel">
+                                @include('settings.tab-pic')
+                            </div>
+                            <div class="tab-pane fade {{ $settings_tab == 'dasar-jadwal' ? 'show active' : '' }}"
+                                id="dasar-jadwal" role="tabpanel">
+                                @include('settings.tab-dasar-jadwal')
                             </div>
 
                         </div>

@@ -2,7 +2,8 @@
     <div class="col-lg-12">
         <div class="card card-dark">
             <div class="card-header">
-                <h4>Report Karyawan</h4>
+                <h4 id="title-report-employee">Report Karyawan | {{ $periode->name }} : {{ $periode->start }} ➡️
+                    {{ $periode->end }}</h4>
                 <div class="card-header-action">
                     <div class="d-flex justify-content-end">
                         <div class="dropdown mx-1">

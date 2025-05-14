@@ -9,8 +9,8 @@
         @foreach ($csses as $css)
             <link rel="stylesheet" href="{{ asset($css) }}">
         @endforeach
-        <link rel="stylesheet" href="{{ asset('library/izitoast/dist/css/iziToast.min.css') }}">
         <link rel="stylesheet" href="{{ asset('library/bootstrap/dist/css/bootstrap.min.css') }}">
+        <link rel="stylesheet" href="{{ asset('library/izitoast/dist/css/iziToast.min.css') }}">
         <link rel="stylesheet" href="{{ asset('library/fontawesome/css/all.min.css') }}">
         <link rel="stylesheet" href="{{ asset('css/components.css') }}">
         <link rel="stylesheet" href="{{ asset('css/style.css') }}">
@@ -49,6 +49,7 @@
         <script src="{{ asset('library/tooltip.js/dist/umd/tooltip.js') }}"></script>
         <script src="{{ asset('library/jquery-nicescroll/dist/jquery.nicescroll.min.js') }}"></script>
         <script src="{{ asset('library/moment/min/moment.min.js') }}"></script>
+        <script src="{{ asset('library/moment-timezone/moment-timezone.js') }}"></script>
         <script src="{{ asset('library/moment/min/locales.min.js') }}"></script>
         <script src="{{ asset('library/izitoast/dist/js/iziToast.min.js') }}"></script>
         <script src="{{ asset('library/bootstrap/dist/js/bootstrap.min.js') }}"></script>

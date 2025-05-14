@@ -122,7 +122,9 @@ function initDaterangePicker() {
             $("#filter-periode").html(
                 `<i class="fas fa-calendar-alt mr-1"></i> ${label}`
             );
-
+            $("#title-report-employee").html(
+                `Report Karyawan | ${periode.name} : ${periode.start}  ${periode.end}`
+            );
             $.ajax({
                 url: base_url() + "report/ajax/set-periode",
                 type: "POST",
@@ -130,9 +132,11 @@ function initDaterangePicker() {
                     _token: CSRF_TOKEN,
                     periode: periode,
                 },
+                success: function (res) {
+                    clearTable();
+                    initTable();
+                },
             });
-            clearTable();
-            initTable();
         }
     );
 }

@@ -4045,3 +4045,28 @@ body:not(.sidebar-mini)
     animation-iteration-count: infinite;
     opacity: 1;
 }
+
+/* Added in v1.0 {report-employee} */
+.bg-light-blue {
+    background-color: #e6f2ff;
+}
+
+.bg-light-green {
+    background-color: #e6fff2;
+}
+
+.bg-light-purple {
+    background-color: #f2e6ff;
+}
+
+.bg-light-red {
+    background-color: #ffe6e6;
+}
+
+.bg-light-yellow {
+    background-color: #fff9c4 !important;
+}
+
+.text-purple {
+    color: #6f42c1;
+}

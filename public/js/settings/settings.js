@@ -18,6 +18,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Schedule Area
         scheduleArea();
 
+        // Pic Area
+        picArea();
+
+        // Dasar Jadwal Area
+        dasarJadwalArea();
+
         // Init table base on tabActive
         initTable();
     });
@@ -33,8 +39,9 @@ function setSettingTabActive(tab) {
         url: base_url() + `settings/tab/${tab}`,
         success: function (res) {
             initTable();
+            var show = showTab.replace(/-/g, " ");
             iziToast.show({
-                title: `${showTab}!`,
+                title: `${show}!`,
                 message: `This tab show your ${tab} information`,
                 position: "bottomRight",
                 timeout: 1680,
@@ -43,8 +50,10 @@ function setSettingTabActive(tab) {
     });
 }
 
-let tableHolidays, tableShift, tableSchedule;
+let tableHolidays, tableShift, tableSchedule, tablePic, tableDasarJadwal;
 function initTable() {
+    console.log(tabActive);
+
     switch (tabActive) {
         case "schedule":
             if (!tableSchedule) {
@@ -227,6 +236,107 @@ function initTable() {
                     ],
                     columnDefs: [],
                     order: [[1, "asc"]],
+                });
+            }
+            break;
+        case "pic":
+            if (!tablePic) {
+                tablePic = $(".table-pic").DataTable({
+                    processing: true,
+                    serverSide: true,
+                    ajax: base_url() + `settings/ajax/datatable/pic`,
+                    // dom: `tip`,
+                    dom: `t<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>`,
+                    columns: [
+                        {
+                            data: "DT_RowIndex",
+                            className: "align-middle text-center",
+                            orderable: false,
+                            searchable: false,
+                        },
+                        {
+                            data: "nama",
+                            name: "nama",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "username",
+                            name: "username",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "pic",
+                            name: "pic",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "mengelola",
+                            name: "mengelola",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "action",
+                            name: "action",
+                            className: "align-middle text-right",
+                            orderable: false,
+                            searchable: false,
+                        },
+                    ],
+                    columnDefs: [],
+                    order: [[1, "asc"]],
+                });
+            }
+            break;
+        case "dasar-jadwal":
+            if (!tableDasarJadwal) {
+                tableDasarJadwal = $(".table-dasar-jadwal").DataTable({
+                    // processing: true,
+                    // serverSide: true,
+                    ajax: base_url() + `settings/ajax/datatable/dasar-jadwal`,
+                    // dom: `tip`,
+                    dom: `t<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>`,
+                    columns: [
+                        {
+                            data: "DT_RowIndex",
+                            className: "align-middle text-center",
+                            orderable: false,
+                            searchable: false,
+                        },
+                        {
+                            data: "nip",
+                            name: "nip",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "nama",
+                            name: "nama",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "divisi.divisi",
+                            name: "divisi.divisi",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "unit.unit",
+                            name: "unit.unit",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "jadwal",
+                            name: "jadwal",
+                            className: "align-middle text-left",
+                        },
+                        {
+                            data: "action",
+                            name: "action",
+                            className: "align-middle text-right",
+                            orderable: false,
+                            searchable: false,
+                        },
+                    ],
+                    columnDefs: [],
+                    order: [[2, "asc"]],
                 });
             }
             break;

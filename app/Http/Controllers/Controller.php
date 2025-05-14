@@ -6,7 +6,9 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
 use InvalidArgumentException;
@@ -15,7 +17,6 @@ use RuntimeException;
 class Controller extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests;
-
 
     /**
      * Get the start and end dates for a given month.
@@ -42,6 +43,44 @@ class Controller extends BaseController
 
         return compact('start', 'end');
     }
+
+    function getPeriodeReport()
+    {
+        $periode = Session::get('periode-' . Auth::user()->id);
+        if (!$periode) {
+            $defaultStart = Carbon::now()->subMonth()->startOfMonth()->day(21)->toDateString();
+            $defaultEnd = Carbon::now()->day(20)->toDateString();
+            $name = $this->getPeriodeName($defaultStart, $defaultEnd);
+            Session::put('periode-' . Auth::user()->id, ['start' => $defaultStart, 'end' => $defaultEnd, 'name' => $name]);
+        }
+        return (object)Session::get('periode-' . Auth::user()->id);
+    }
+
+    function setPeriodeReport(Request $request)
+    {
+        $periode  = $request->periode;
+        Session::put('periode-' . Auth::user()->id, ['start' => $periode['start'], 'end' => $periode['end'], 'name' => $periode['name']]);
+        return response()->json(Session::get('periode-' . Auth::user()->id));
+    }
+
+    private function getPeriodeName(string $start, string $end): string
+    {
+        $startDate = new Carbon($start);
+        $endDate = new Carbon($end);
+
+        $startMonth = $startDate->month;
+        $endMonth = $endDate->month;
+
+        $name = 'Custom Range';
+
+        if ($endMonth - $startMonth === 1 && $startDate->day === 21 && $endDate->day === 20) {
+            $name = $endDate->locale('id_ID')->monthName;
+        }
+
+        return $name;
+    }
+
+
     // This function converts minutes to effective hours
     function menitToEfektifJam($menit)
     {
@@ -147,5 +186,116 @@ class Controller extends BaseController
 
         // If $type is 'string', return $result as a string
         return $result;
+    }
+
+    public function getSelisihWaktu($start, $end)
+    {
+        $murni = (int)abs(Carbon::parse($start)->diffInMinutes($end));
+        $efektif = $murni - ($murni % 15) + (($murni % 15) > 0 ? 15 : 0);
+        return (object) compact('murni', 'efektif');
+    }
+
+    public function getEfektifJamLembur($lembur_murni)
+    {
+        if ($lembur_murni >= 75) {
+            return $lembur_murni - ($lembur_murni % 30);
+        }
+        return 0;
+    }
+
+    function getAkumulasiJamLembur($jamLemburEfektif, $jenisLembur, $pangkat_id)
+    {
+        $jamLemburEfektif = round($jamLemburEfektif / 30) * 30;
+        $jamLembur =  floor($jamLemburEfektif / 60); // Konversi menit ke jam penuh
+        $sisaMenit =  $jamLemburEfektif % 60; // Sisa menit
+        $jamLemburAkumulasi = 0;
+        if ($pangkat_id == 1) {
+            switch ($jenisLembur) {
+                case 'Terusan':
+                    $lemburPertama = min(60, $jamLemburEfektif);
+                    $lemburSelanjutnya = max(0, $jamLemburEfektif - 60);
+                    $jamLemburAkumulasi = ($lemburPertama * 1.5) + ($lemburSelanjutnya * 2);
+                    return (int) $jamLemburAkumulasi;
+
+                case 'Lembur Libur':
+                    if ($jamLembur > 8) {
+                        $jamLemburAkumulasi += ($jamLembur - 8) * 4 * 60; // 9 jam ke atas kali 4
+                        $jamLembur = 8; // Kurangi jam yang sudah dihitung
+                    }
+                    if ($jamLembur == 8) {
+                        $jamLemburAkumulasi += 8 * 3 * 60; // 8 jam kali 3
+                        $jamLembur = 7; // Kurangi jam yang sudah dihitung
+                    }
+                    if ($jamLembur <= 7) {
+                        $jamLemburAkumulasi += $jamLembur * 2 * 60; // 1-7 jam kali 2
+                    }
+
+                    // Hitung menit yang tersisa (tarif sesuai jam terakhir)
+                    if ($jamLemburEfektif > 480) { // Di atas 8 jam
+                        $jamLemburAkumulasi += $sisaMenit * 4;
+                    } elseif ($jamLemburEfektif > 420) { // 8 jam
+                        $jamLemburAkumulasi += $sisaMenit * 3;
+                    } else { // 1-7 jam
+                        $jamLemburAkumulasi += $sisaMenit * 2;
+                    }
+                    return (int) $jamLemburAkumulasi;
+
+                default:
+                    return (int) $jamLemburAkumulasi;
+            }
+        }
+        return (int)$jamLemburEfektif;
+    }
+
+    public function getJamIstirahat($date, $time)
+    {
+        switch ($time) {
+            case 'sore':
+                return (object)[
+                    'mulai' => $date . ' 18:00',
+                    'selesai' => $date . ' 18:45',
+                    'durasi' => 45
+                ];
+                break;
+
+            default:
+                return (object)[
+                    'mulai' => $date . ' 12:00',
+                    'selesai' => $date . ' 12:45',
+                    'durasi' => 45
+                ];
+                break;
+        }
+    }
+
+    public function shiftLemburID()
+    {
+        return 1;
+    }
+
+    public function createListShiftFromString(array $strings): array
+    {
+        // Initialize an empty array to store all items
+        $allItems = [];
+
+        // Process each string
+        foreach ($strings as $string) {
+            // Split the string into an array and merge with existing items
+            $allItems = array_merge($allItems, explode(',', $string));
+        }
+
+        // Filter to keep only integer values
+        $integers = array_filter($allItems, function ($value) {
+            return is_numeric($value) && ctype_digit(strval($value));
+        });
+
+        // Convert string numbers to integers
+        $integers = array_map('intval', $integers);
+
+        // Remove duplicates
+        $unique = array_unique($integers);
+
+        // Reset array keys
+        return array_values($unique);
     }
 }

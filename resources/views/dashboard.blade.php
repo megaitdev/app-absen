@@ -14,7 +14,7 @@
             </div>
 
             <div class="section-body">
-                <h2 class="section-title">Dashboard</h2>
+                <h2 class="section-title">Dashboard Admin</h2>
                 <p class="section-lead">
                     This page is an example of using the blank page template.
                     This template is suitable for making the landing page, login page, and others.

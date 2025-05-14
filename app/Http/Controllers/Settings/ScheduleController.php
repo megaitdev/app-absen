@@ -135,7 +135,7 @@ class ScheduleController extends Controller
             'slug' => 'settings',
             'scripts' => $this->script->getListScript('schedule-tambah'),
             'csses' => $this->css->getListCss('schedule-tambah'),
-            'shift' => Shift::where('is_active', 1)->get(),
+            'shift' => Shift::where('is_active', 1)->where('id', '>', 5)->get(),
         ];
         return view('settings.schedule-tambah', $data);
     }

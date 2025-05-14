@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Divisi extends Model
 {
     use HasFactory;
-    protected $connection = 'mysql_hrd';
+    protected $connection = 'mysql';
+    protected $table = 'hrd_divisis';
     protected $guarded = ['id'];
 }
