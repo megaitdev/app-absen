@@ -19,6 +19,19 @@ return new class extends Migration
             $table->string('pic');
             $table->string('lampiran')->nullable();
             $table->text('keterangan')->nullable();
+
+            // Workflow approval fields
+            $table->enum('status', ['pending', 'approved_supervisor', 'approved_hrd', 'rejected', 'cancelled'])->default('pending');
+            $table->foreignId('submitted_by')->nullable()->constrained('users'); // PIC yang mengajukan
+            $table->foreignId('approved_by_supervisor')->nullable()->constrained('users'); // Atasan yang approve
+            $table->foreignId('approved_by_hrd')->nullable()->constrained('users'); // HRD yang approve
+            $table->timestamp('submitted_at')->nullable();
+            $table->timestamp('approved_supervisor_at')->nullable();
+            $table->timestamp('approved_hrd_at')->nullable();
+            $table->text('rejection_reason')->nullable();
+            $table->text('supervisor_notes')->nullable();
+            $table->text('hrd_notes')->nullable();
+
             $table->timestamps();
         });
     }

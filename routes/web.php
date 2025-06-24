@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Employee\EmployeeController;
 use App\Http\Controllers\LampiranController;
-use App\Http\Controllers\Pic\PicDashboardController;
 use App\Http\Controllers\Settings\HolidayController;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Http\Controllers\Profile\VerifikasiController;
@@ -19,7 +18,6 @@ use App\Http\Controllers\Settings\ScheduleController;
 use App\Http\Controllers\Settings\SettingController;
 use App\Http\Controllers\Settings\ShiftController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 
 
 
@@ -212,6 +210,38 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/lampiran/{kategori}/{lampiran}', [LampiranController::class, 'showDokumen']);
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Workflow Approval
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('workflow')->middleware([\App\Http\Middleware\WorkflowApprovalAccess::class])->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Workflow\WorkflowController::class, 'dashboard'])->name('workflow.dashboard');
+        Route::get('/pending-approvals', [\App\Http\Controllers\Workflow\WorkflowController::class, 'pendingApprovals']);
+        Route::post('/approve-supervisor', [\App\Http\Controllers\Workflow\WorkflowController::class, 'approveBySupervisor']);
+        Route::post('/approve-hrd', [\App\Http\Controllers\Workflow\WorkflowController::class, 'approveByHrd']);
+        Route::post('/reject', [\App\Http\Controllers\Workflow\WorkflowController::class, 'reject']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Approval Levels Management
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('settings/approval-levels')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'index'])->name('approval-levels.index');
+        Route::get('/datatable', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'datatable']);
+        Route::post('/store', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'store']);
+        Route::get('/{id}', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'show']);
+        Route::put('/{id}', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'destroy']);
+        Route::get('/data/supervisors', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'getSupervisors']);
+        Route::get('/data/units', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'getUnits']);
+        Route::get('/data/divisis', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'getDivisis']);
+    });
 
     /*
     |--------------------------------------------------------------------------
