@@ -124,6 +124,7 @@
                     }).then(() => {
                         $('#modal-perizinan').modal('hide');
                         tableReport.ajax.reload();
+                        initStatistikKehadiran();
                         document.getElementById('form-izin').reset();
                     });
                 } else {
@@ -225,6 +226,7 @@
                         });
                         // Reload tabel
                         tableReport.ajax.reload();
+                        initStatistikKehadiran();
                     },
                     error: function(xhr) {
                         const response = xhr.responseJSON;

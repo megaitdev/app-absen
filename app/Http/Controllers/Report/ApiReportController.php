@@ -29,7 +29,8 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as WriterXlsx;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as ReaderXlsx;
 use SaeedVaziry\LaravelAsync\Facades\AsyncHandler;
 
 class ApiReportController extends Controller
@@ -913,7 +914,7 @@ class ApiReportController extends Controller
         $year = Carbon::parse($startDate)->format('Y');
 
         $filename = public_path('storage/templates/laporan-absen-karyawan-v1.xlsx');
-        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        $reader = new ReaderXlsx;
         $spreadsheet = $reader->load($filename);
 
 
@@ -993,12 +994,14 @@ class ApiReportController extends Controller
             }
             $index++;
         }
-        $writer = new Xlsx($spreadsheet);
+        $writer = new WriterXlsx($spreadsheet);
         $filename = 'report-employee-' . $employee->nama . '.xlsx';
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
-        $writer->save('php://output');
+        $writer->save($filename);
+        return response()->download($filename)->deleteFileAfterSend(true);
+        // header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        // header('Content-Disposition: attachment;filename="' . $filename . '"');
+        // header('Cache-Control: max-age=0');
+        // $writer->save('php://output');
     }
 
     function getUniqueUnitNames(array $employeeIds)
@@ -1050,7 +1053,7 @@ class ApiReportController extends Controller
         $year = Carbon::parse($startDate)->format('Y');
 
         $filename = public_path('storage/templates/laporan-absen-unit-v1.xlsx');
-        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        $reader = new ReaderXlsx();
         $spreadsheet = $reader->load($filename);
         $styleArray = [
             'borders' => [
@@ -1093,12 +1096,14 @@ class ApiReportController extends Controller
             $indexEmployee++;
         }
 
-        $writer = new Xlsx($spreadsheet);
+        $writer = new WriterXlsx($spreadsheet);
         $filename = 'report-pic-' . $pic->nama . '.xlsx';
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
-        $writer->save('php://output');
+        $writer->save($filename);
+        return response()->download($filename)->deleteFileAfterSend(true);
+        // header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        // header('Content-Disposition: attachment;filename="' . $filename . '"');
+        // header('Cache-Control: max-age=0');
+        // $writer->save('php://output');
     }
 
 
@@ -1137,9 +1142,28 @@ class ApiReportController extends Controller
 
 
 
-        $stats = array_fill_keys(['total_hari', 'hadir', 'tidak_hadir', 'cuti', 'izin', 'sakit', 'alpha', 'pergi_kembali', 'pergi_tidak_kembali', 'terlambat', 'pulang_cepat', 'lembur'], 0);
+        $stats = array_fill_keys(
+            [
+                'total_hari',
+                'hadir',
+                'tidak_hadir',
+                'cuti',
+                'izin',
+                'sakit',
+                'alpha',
+                'verifikasi',
+                'pergi_kembali',
+                'pergi_tidak_kembali',
+                'terlambat',
+                'pulang_cepat',
+                'lembur',
+                'total_jam_potongan',
+                'total_menit_potongan',
+            ],
+            0
+        );
         $stats['total_hari'] = count($shifts);
-
+        $stats['verifikasi'] = $reports->where('is_verifikasi', 1)->count();
 
         $totalMenitKerja = $reports->sum(function ($report) {
             if (is_null($report->shift_id)) {
@@ -1165,8 +1189,7 @@ class ApiReportController extends Controller
             if ($report->status != 'Hadir') {
                 if ($report->is_cuti == 1) {
                     return $report->jam_kerja_efektif;
-                }
-                if ($report->is_izin == 1) {
+                } else {
                     return $report->jam_hilang_efektif;
                 }
             }
@@ -1176,19 +1199,27 @@ class ApiReportController extends Controller
         $stats['total_menit_tidak_hadir'] = $totalMenitTidakHadir;
         $stats['total_jam_tidak_hadir'] = $totalMenitTidakHadir / 60;
 
-        $totalMenitPotongan = $reports->sum(function ($report) use ($jenisIzinList) {
-            if ($report->izin && $jenisIzinList[$report->izin->jenis_izin] != 'Izin Sakit' && $report->is_cuti != 1) {
-                return $report->jam_hilang_efektif;
-            }
-            if ($report->status == 'Hadir' && ($report->status_masuk == 'Terlambat' || $report->status_keluar == 'Pulang Cepat')) {
-                return $report->jam_hilang_efektif;
-            }
-
-            return 0;
+        $totalMenitHilan = $reports->sum(function ($report) {
+            return $report->jam_hilang_efektif;
         });
+        $stats['total_menit_hilang'] = $totalMenitHilan;
+        $stats['total_jam_hilang'] = $totalMenitHilan / 60;
 
-        $stats['total_menit_potongan'] = $totalMenitPotongan;
-        $stats['total_jam_potongan'] = $totalMenitPotongan / 60;
+
+        // Potongan
+        if ($employee->pangkat_id == 1) {
+            $totalMenitPotongan = $reports->sum(function ($report) use ($jenisIzinList) {
+                if ($report->izin && $jenisIzinList[$report->izin->jenis_izin] != 'Izin Sakit' && $report->is_cuti != 1) {
+                    return $report->jam_hilang_efektif;
+                }
+                if ($report->status == 'Hadir' && ($report->status_masuk == 'Terlambat' || $report->status_keluar == 'Pulang Cepat')) {
+                    return $report->jam_hilang_efektif;
+                }
+                return 0;
+            });
+            $stats['total_menit_potongan'] = $totalMenitPotongan;
+            $stats['total_jam_potongan'] = $totalMenitPotongan / 60;
+        }
 
         $totalMenitTerlambat = $reports->sum(function ($report) {
             if ($report->status_masuk == 'Terlambat') {
@@ -1348,6 +1379,7 @@ class ApiReportController extends Controller
             $startDatetime = Carbon::now();
             $endDatetime = $startDatetime->copy()->addSeconds($timeout);
             info("Timeout: " . $startDatetime . " - " . $endDatetime);
+            info("PHP Version: " . phpversion());
 
             $arc = new ApiReportController();
             $arc->generateReportPic($picID, $periode);

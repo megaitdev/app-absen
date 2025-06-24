@@ -24,9 +24,10 @@ function initPeriode() {
         dataType: "json",
         success: function (res) {
             periode = res;
-            console.log(res);
 
             year = moment(periode.end).format("YYYY");
+
+            $("#periode-summary").text(`Periode: ${periode.name} ${year}`);
 
             initDaterangePicker();
 
@@ -44,7 +45,6 @@ function initStatistikKehadiran() {
         dataType: "json",
         success: function (res) {
             let stat = res.data;
-            console.log(stat);
 
             $("#attendance-percentage")
                 .children("span:nth-child(2)")
@@ -55,6 +55,9 @@ function initStatistikKehadiran() {
             $("#attendance-total-hour")
                 .children("span:nth-child(2)")
                 .text(`${stat.total_jam_hadir} jam`);
+            $("#available-hour")
+                .children("span:nth-child(2)")
+                .text(`${stat.total_jam_kerja} jam`);
 
             $("#regular-allowance-meal")
                 .children("span:nth-child(2)")
@@ -75,6 +78,35 @@ function initStatistikKehadiran() {
             $("#overtime-allowance-meal-overtime")
                 .children("span:nth-child(2)")
                 .text(`${stat.total_umll}x`);
+
+            $("#overtime-persentase")
+                .children("span:nth-child(2)")
+                .text(`${stat.persentase_lembur}%`);
+            $("#overtime-jumlah-hari")
+                .children("span:nth-child(2)")
+                .text(`${stat.lembur} hari`);
+            $("#overtime-total-jam")
+                .children("span:nth-child(2)")
+                .text(`${stat.total_jam_lembur} jam`);
+            $("#overtime-total-jam-akumulasi")
+                .children("span:nth-child(2)")
+                .text(`${stat.total_jam_akumulasi_lembur} jam`);
+
+            $("#total-leave")
+                .children("span:nth-child(2)")
+                .text(`${stat.cuti}x`);
+            $("#total-permit")
+                .children("span:nth-child(2)")
+                .text(`${stat.izin}x`);
+            $("#verification")
+                .children("span:nth-child(2)")
+                .text(`${stat.verifikasi}x`);
+            $("#lost-hours")
+                .children("span:nth-child(2)")
+                .text(`${stat.total_jam_hilang} jam`);
+            $("#deductions")
+                .children("span:nth-child(2)")
+                .text(`${stat.total_jam_potongan} jam`);
         },
     });
 }

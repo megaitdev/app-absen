@@ -9,7 +9,7 @@
                 <div class="section-header-back">
                     <a href="{{ url()->previous() }}" class="btn btn-icon"><i class="fas fa-arrow-left"></i></a>
                 </div>
-                <h1>{{ $title }}</h1>
+                <h1>{{ $title }} </h1>
                 <div class="section-header-button ml-auto">
                     <a href="{{ url('api/v1/report/print/employee/' . $employee->id) }}" target="_blank"
                         class="btn btn-block btn-outline-primary">
@@ -74,7 +74,7 @@
                         <div class="card mb-4 shadow-sm" id="attendance-summary-card">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center w-100">
-                                    <h6 class="text-primary" id="attendance-title">Ringkasan Kehadiran |
+                                    <h6 class="text-primary my-auto" id="attendance-title">Ringkasan Kehadiran |
                                         {{ $periode->name }} : {{ $periode->start }} ➡️ {{ $periode->end }}</h6>
                                     <button class="btn btn-sm btn-dark" id="toggle-summary" data-toggle="collapse"
                                         data-target="#attendance-content">
@@ -82,7 +82,7 @@
                                     </button>
                                 </div>
 
-                                <div id="attendance-content" class="collapse">
+                                <div id="attendance-content" class="collapse mt-3">
                                     <div class="row g-3">
                                         <!-- Attendance Statistics -->
                                         <div id="attendance-summary" class="col-md-3">
@@ -104,9 +104,15 @@
                                                         </span>
                                                     </div>
                                                     <div id="attendance-total-hour" class="d-flex justify-content-between">
-                                                        <span class="text-muted">Total Jam Kerja:</span>
+                                                        <span class="text-muted">Total Jam Hadir:</span>
                                                         <span class="font-weight-bolder">
                                                             <i class="fas fa-spinner fa-spin"></i> - jam
+                                                        </span>
+                                                    </div>
+                                                    <div id="available-hour" class="d-flex justify-content-between">
+                                                        <span class="text-muted">Total Jam Tersedia:</span>
+                                                        <span class="font-weight-bolder">
+                                                            <i class="fas fa-spinner fa-spin"></i> - hour
                                                         </span>
                                                     </div>
                                                 </div>
@@ -169,42 +175,58 @@
                                         </div>
 
                                         <!-- Overtime -->
-                                        <div class="col-md-3">
+                                        <div id="overtime-summary" class="col-md-3">
                                             <div class="card h-100 bg-light-purple border-0">
                                                 <div class="card-body">
                                                     <h3 class="card-title h6 font-weight-bolder mb-3">Lembur</h3>
-                                                    <div class="d-flex justify-content-between mb-2">
-                                                        <span class="text-muted">Jam Lembur Normal:</span>
-                                                        <span class="font-weight-bolder">5.30 jam</span>
+                                                    <div class="d-flex justify-content-between mb-2"
+                                                        id="overtime-persentase">
+                                                        <span class="text-muted">Persentase Lembur:</span>
+                                                        <span class="font-weight-bolder">25%</span>
                                                     </div>
-                                                    <div class="d-flex justify-content-between mb-2">
-                                                        <span class="text-muted">Jam Lembur Efektif:</span>
-                                                        <span class="font-weight-bolder">4.80 jam</span>
+                                                    <div class="d-flex justify-content-between mb-2"
+                                                        id="overtime-jumlah-hari">
+                                                        <span class="text-muted">Hari Lembur:</span>
+                                                        <span class="font-weight-bolder">2 hari</span>
                                                     </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <span class="text-muted">Pembayaran Lembur:</span>
-                                                        <span class="font-weight-bolder text-purple">Rp 360.000</span>
+                                                    <div class="d-flex justify-content-between mb-2"
+                                                        id="overtime-total-jam">
+                                                        <span class="text-muted">Total Jam Lembur:</span>
+                                                        <span class="font-weight-bolder">6.00 jam</span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between"
+                                                        id="overtime-total-jam-akumulasi">
+                                                        <span class="text-muted">Total Jam Lembur Akumulasi:</span>
+                                                        <span class="font-weight-bolder">12.00 jam</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <!-- Deductions -->
-                                        <div class="col-md-3">
+                                        <div id="deductions-summary" class="col-md-3">
                                             <div class="card h-100 bg-light-red border-0">
                                                 <div class="card-body">
-                                                    <h3 class="card-title h6 font-weight-bolder mb-3">Potongan</h3>
-                                                    <div class="d-flex justify-content-between mb-2">
+                                                    <h3 class="card-title h6 font-weight-bolder mb-3">Perizinan</h3>
+                                                    <div class="d-flex justify-content-between mb-2" id="total-leave">
+                                                        <span class="text-muted">Total Cuti:</span>
+                                                        <span class="font-weight-bolder">-</span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between mb-2" id="total-permit">
+                                                        <span class="text-muted">Total Izin:</span>
+                                                        <span class="font-weight-bolder">-</span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between mb-2" id="verification">
+                                                        <span class="text-muted">Verifikasi:</span>
+                                                        <span class="font-weight-bolder">-</span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between mb-2" id="lost-hours">
                                                         <span class="text-muted">Jam Hilang:</span>
                                                         <span class="font-weight-bolder">6.15 jam</span>
                                                     </div>
-                                                    <div class="d-flex justify-content-between mb-2">
-                                                        <span class="text-muted">Potongan Jam Hilang:</span>
-                                                        <span class="font-weight-bolder text-danger">Rp 307.500</span>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <span class="text-muted">Tunjangan Setelah Potongan:</span>
-                                                        <span class="font-weight-bolder">Rp 1.192.500</span>
+                                                    <div class="d-flex justify-content-between" id="deductions">
+                                                        <span class="text-muted">Potongan:</span>
+                                                        <span class="font-weight-bolder">Rp 307.500</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -213,10 +235,10 @@
 
                                     <!-- Summary Footer -->
                                     <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                                        <span class="text-muted">Periode: Januari 2025</span>
+                                        <span id="periode-summary" class="text-muted">Periode: Januari 2025</span>
                                         <div class="text-end">
                                             <p class="text-muted mb-1">Total Penerimaan Bersih:</p>
-                                            <p class="fw-bold h5 mb-0">Rp 2.352.500</p>
+                                            <p class="fw-bold text-primary h5 mb-0">Rp -</p>
                                         </div>
                                     </div>
                                 </div>

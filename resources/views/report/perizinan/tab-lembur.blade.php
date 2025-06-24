@@ -356,6 +356,7 @@
                             report.shift.jam_keluar = $('#end_lembur').val();
                         }
                         tableReport.ajax.reload();
+                        initStatistikKehadiran();
                         document.getElementById('form-lembur').reset();
                     });
                 } else {
@@ -457,6 +458,7 @@
                         });
                         // Reload tabel
                         tableReport.ajax.reload();
+                        initStatistikKehadiran();
                     },
                     error: function(xhr) {
                         const response = xhr.responseJSON;
@@ -552,6 +554,7 @@
                     }).then(() => {
                         $('#overtimeModal').modal('hide');
                         tableReport.ajax.reload();
+                        initStatistikKehadiran();
                         document.getElementById('overtime-form').reset();
                     });
                 } else {

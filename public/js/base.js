@@ -1,6 +1,12 @@
 function base_url() {
     var pathArray = window.location.pathname.split("/");
-    return window.location.origin + pathArray.slice(0, 3).join("/") + "/";
+    // artisan serve
+    // console.log(window.location.origin + pathArray.slice(0, 1).join("/") + "/");
+
+    // standalone
+    // console.log(window.location.origin + pathArray.slice(0, 3).join("/") + "/");
+
+    return window.location.origin + pathArray.slice(0, 1).join("/") + "/";
 }
 function none() {
     return null;

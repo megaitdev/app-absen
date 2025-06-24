@@ -87,6 +87,7 @@
                     }).then(() => {
                         $('#modal-perizinan').modal('hide');
                         tableReport.ajax.reload();
+                        initStatistikKehadiran();
                         document.getElementById('form-cuti').reset();
                         $('#jenis_cuti').val(1).trigger('change');
                         document.getElementById('lampiran_cuti').value = '';
@@ -183,6 +184,7 @@
                         });
                         // Reload tabel
                         tableReport.ajax.reload();
+                        initStatistikKehadiran();
                         document.getElementById('form-cuti').reset();
                         $('#jenis_cuti').val(1).trigger('change');
                     },

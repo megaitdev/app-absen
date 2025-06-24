@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\LoginController as AuthLoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Employee\EmployeeController;
@@ -18,13 +20,19 @@ use App\Http\Controllers\Settings\SettingController;
 use App\Http\Controllers\Settings\ShiftController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-use SebastianBergmann\CodeCoverage\Report\Html\Dashboard;
+
+
+
 
 Route::get('/', function () {
-    return redirect()->intended(route('login'));
+    return redirect()->route('login');
 })->middleware('guest');
 
-Auth::routes();
+Route::get('login', [AuthLoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthLoginController::class, 'login']);
+Route::post('/logout', [AuthLoginController::class, 'logout'])->name('logout');
+Route::get('register', [AuthLoginController::class, 'showRegistrationForm'])->name('register');
+Route::post('/register', [RegisterController::class, 'register']);
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboard']);
