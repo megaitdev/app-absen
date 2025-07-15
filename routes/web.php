@@ -206,6 +206,18 @@ Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | PIC Dashboard API
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/api/pic/dashboard/stats', [PicDashboardController::class, 'getDashboardStats']);
+    Route::get('/api/pic/dashboard/unit-attendance-chart', [PicDashboardController::class, 'getUnitAttendanceChart']);
+    Route::get('/api/pic/dashboard/unit-performance', [PicDashboardController::class, 'getUnitPerformance']);
+    Route::get('/api/pic/dashboard/recent-activities', [PicDashboardController::class, 'getRecentActivities']);
+
+
+    /*
+    |--------------------------------------------------------------------------
     | Lampiran
     |--------------------------------------------------------------------------
     */

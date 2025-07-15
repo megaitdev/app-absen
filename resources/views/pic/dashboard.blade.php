@@ -154,44 +154,30 @@
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table class="table table-striped">
-                                        <tr>
-                                            <th>Unit</th>
-                                            <th>Total Karyawan</th>
-                                            <th>Kehadiran</th>
-                                            <th>Cuti</th>
-                                            <th>Izin</th>
-                                            <th>Sakit</th>
-                                            <th>Lembur</th>
-                                            <th>Status</th>
-                                        </tr>
-                                        @foreach ($units ?? [['nama' => 'IT', 'total' => 8, 'kehadiran' => '90%', 'cuti' => '5%', 'izin' => '2%', 'sakit' => '3%', 'lembur' => '15%', 'status' => 'Baik'], ['nama' => 'Finance', 'total' => 6, 'kehadiran' => '85%', 'cuti' => '10%', 'izin' => '0%', 'sakit' => '5%', 'lembur' => '5%', 'status' => 'Baik'], ['nama' => 'Marketing', 'total' => 7, 'kehadiran' => '75%', 'cuti' => '5%', 'izin' => '15%', 'sakit' => '5%', 'lembur' => '20%', 'status' => 'Perlu Perhatian'], ['nama' => 'HR', 'total' => 4, 'kehadiran' => '95%', 'cuti' => '5%', 'izin' => '0%', 'sakit' => '0%', 'lembur' => '10%', 'status' => 'Baik']] as $unit)
+                                    <table class="table table-striped" id="unit-performance-table">
+                                        <thead>
                                             <tr>
-                                                <td>{{ $unit['nama'] }}</td>
-                                                <td>{{ $unit['total'] }}</td>
-                                                <td>
-                                                    <div class="progress mb-1" data-height="4" data-toggle="tooltip"
-                                                        title="{{ $unit['kehadiran'] }}">
-                                                        <div class="progress-bar bg-success"
-                                                            data-width="{{ $unit['kehadiran'] }}"></div>
+                                                <th>Unit</th>
+                                                <th>Total Karyawan</th>
+                                                <th>Kehadiran</th>
+                                                <th>Cuti</th>
+                                                <th>Izin</th>
+                                                <th>Sakit</th>
+                                                <th>Lembur</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Content will be loaded via AJAX -->
+                                            <tr>
+                                                <td colspan="8" class="text-center text-muted py-3">
+                                                    <div class="spinner-border text-primary" role="status">
+                                                        <span class="sr-only">Loading...</span>
                                                     </div>
-                                                    {{ $unit['kehadiran'] }}
-                                                </td>
-                                                <td>{{ $unit['cuti'] }}</td>
-                                                <td>{{ $unit['izin'] }}</td>
-                                                <td>{{ $unit['sakit'] }}</td>
-                                                <td>{{ $unit['lembur'] }}</td>
-                                                <td>
-                                                    @if ($unit['status'] == 'Baik')
-                                                        <div class="badge badge-success">Baik</div>
-                                                    @elseif($unit['status'] == 'Perlu Perhatian')
-                                                        <div class="badge badge-warning">Perlu Perhatian</div>
-                                                    @else
-                                                        <div class="badge badge-danger">Bermasalah</div>
-                                                    @endif
+                                                    <p class="mt-2">Memuat data...</p>
                                                 </td>
                                             </tr>
-                                        @endforeach
+                                        </tbody>
                                     </table>
                                 </div>
                             </div>
@@ -202,28 +188,27 @@
                 <!-- Recent Activity -->
                 <div class="row">
                     <div class="col-lg-6">
-                        <div class="card">
+                        <div class="card" id="recent-activities-container">
                             <div class="card-header">
                                 <h4>Aktivitas Terbaru</h4>
+                                <div class="card-header-action">
+                                    <button class="btn btn-sm btn-primary" onclick="loadRecentActivities()" title="Refresh">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
-                                <ul class="list-unstyled list-unstyled-border">
-                                    @foreach ($recentActivities ?? [['nama' => 'Budi Santoso', 'unit' => 'IT', 'aktivitas' => 'Mengajukan cuti', 'waktu' => '2 jam yang lalu', 'avatar' => 'avatar-1.png'], ['nama' => 'Siti Nurhaliza', 'unit' => 'Finance', 'aktivitas' => 'Izin terlambat', 'waktu' => '3 jam yang lalu', 'avatar' => 'avatar-2.png'], ['nama' => 'Joko Widodo', 'unit' => 'Marketing', 'aktivitas' => 'Mengirim laporan lembur', 'waktu' => '4 jam yang lalu', 'avatar' => 'avatar-3.png'], ['nama' => 'Dewi Safitri', 'unit' => 'HR', 'aktivitas' => 'Mengkonfirmasi kehadiran', 'waktu' => '5 jam yang lalu', 'avatar' => 'avatar-4.png']] as $activity)
-                                        <li class="media">
-                                            <img class="mr-3 rounded-circle" width="50"
-                                                src="{{ asset('img/avatar/' . $activity['avatar']) }}" alt="avatar">
-                                            <div class="media-body">
-                                                <div class="float-right text-small text-muted">{{ $activity['waktu'] }}
-                                                </div>
-                                                <div class="media-title">{{ $activity['nama'] }}</div>
-                                                <span class="text-small text-muted">{{ $activity['aktivitas'] }} <div
-                                                        class="bullet"></div> {{ $activity['unit'] }}</span>
-                                            </div>
-                                        </li>
-                                    @endforeach
+                                <ul class="list-unstyled list-unstyled-border" id="recent-activities-list">
+                                    <!-- Content will be loaded via AJAX -->
+                                    <li class="text-center text-muted py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
+                                        <p class="mt-2">Memuat data...</p>
+                                    </li>
                                 </ul>
                                 <div class="text-center pt-1 pb-1">
-                                    <a href="#" class="btn btn-primary btn-lg btn-round">
+                                    <a href="{{ url('report') }}" class="btn btn-primary btn-lg btn-round">
                                         Lihat Semua
                                     </a>
                                 </div>
@@ -268,23 +253,16 @@
 
     <!-- Page Specific JS File -->
     <script>
-        // Unit Attendance Chart
+        // Unit Attendance Chart - Initialize with empty data
         var unitAttendanceCtx = document.getElementById("unitAttendanceChart").getContext('2d');
         var unitAttendanceChart = new Chart(unitAttendanceCtx, {
             type: 'bar',
             data: {
-                labels: ["IT", "Finance", "Marketing", "HR", "Production", "Logistics"],
+                labels: [],
                 datasets: [{
                     label: 'Kehadiran (%)',
-                    data: [90, 85, 75, 95, 88, 79],
-                    backgroundColor: [
-                        'rgba(67, 94, 190, 0.8)',
-                        'rgba(67, 94, 190, 0.8)',
-                        'rgba(67, 94, 190, 0.8)',
-                        'rgba(67, 94, 190, 0.8)',
-                        'rgba(67, 94, 190, 0.8)',
-                        'rgba(67, 94, 190, 0.8)'
-                    ],
+                    data: [],
+                    backgroundColor: 'rgba(67, 94, 190, 0.8)',
                     borderWidth: 1
                 }]
             },
@@ -303,14 +281,22 @@
             }
         });
 
-        // Absence Chart
+        // Store chart reference globally
+        window.unitAttendanceChart = unitAttendanceChart;
+
+        // Initialize chart with data if available
+        if (typeof window.initializeChartsWithData === 'function') {
+            window.initializeChartsWithData();
+        }
+
+        // Absence Chart - Initialize with empty data
         var absenceCtx = document.getElementById("absenceChart").getContext('2d');
         var absenceChart = new Chart(absenceCtx, {
             type: 'doughnut',
             data: {
                 labels: ["Cuti", "Izin", "Sakit", "Verifikasi"],
                 datasets: [{
-                    data: [6, 4, 3, 2],
+                    data: [0, 0, 0, 0],
                     backgroundColor: [
                         '#63ed7a',
                         '#6777ef',
@@ -329,5 +315,13 @@
                 cutoutPercentage: 80
             }
         });
+
+        // Store chart reference globally
+        window.absenceChart = absenceChart;
+
+        // Initialize chart with data if available
+        if (typeof window.initializeChartsWithData === 'function') {
+            window.initializeChartsWithData();
+        }
     </script>
 @endpush

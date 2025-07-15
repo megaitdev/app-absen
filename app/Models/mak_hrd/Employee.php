@@ -9,6 +9,7 @@ use App\Models\mak_hrd\Unit;
 use App\Models\ScanLog;
 use App\Models\Schedule;
 use App\Models\Shift;
+use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -56,9 +57,23 @@ class Employee extends Model
         return $this->hasOne(Pangkat::class, 'id', 'pangkat_id');
     }
 
+    public function user()
+    {
+        return $this->hasOne(User::class, 'employee_id', 'id');
+    }
+
     public function scan_logs(): HasMany
     {
         return $this->hasMany(ScanLog::class, 'pin', 'pin');
+    }
+
+    // Get picture from user or default
+    public function getPictureAttribute()
+    {
+        if ($this->user && $this->user->picture) {
+            return $this->user->picture;
+        }
+        return 'default-avatar.png';
     }
 
     public function dasarJadwal()

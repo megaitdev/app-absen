@@ -10,6 +10,11 @@ class ScriptController extends Controller
     public function getListScript($page = null)
     {
         switch ($page) {
+            case "dashboard-pic":
+                return [
+                    // Put path script below here
+                    "js/pic-dashboard.js",
+                ];
             case "report-employee":
                 return [
                     // Put path script below here
