@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\mak_hrd;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class EmployeeLaporanHarian extends Model
+class Jabatan extends Model
 {
     use HasFactory;
-    protected $connection = 'mysql_lh';
-    protected $table = 'emp';
+    protected $connection = 'mysql';
+    protected $table = 'hrd_jabatans';
     protected $guarded = ['id'];
 }

@@ -10,6 +10,10 @@ class CssController extends Controller
     public function getListCss($page = null)
     {
         switch ($page) {
+            case "perizinan":
+                return [
+                    "css/perizinan/{$page}.css",
+                ];
             case "report-employee":
                 return [
                     "library/bootstrap-daterangepicker/daterangepicker.css",

@@ -44,6 +44,14 @@ return [
             'throw' => false,
         ],
 
+        'storage' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public'), // UBAH BARIS INI
+            'url' => env('APP_URL') . '/storage', // Dan ini juga harus diubah agar URLnya benar
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

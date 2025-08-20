@@ -32,6 +32,20 @@ class SanboxController extends Controller
 
     function sandbox()
     {
+        $hrdEmployees = Employee::select(
+            'id',
+            'nip',
+            'nama',
+            'pin'
+        )
+            ->where('is_deleted', 0)
+            ->whereNull('pin')
+            ->get();
+
+        dd($hrdEmployees);
+    }
+    function sandboxMysqlHrd()
+    {
         $query = Employee::on('mysql_hrd') // Ensure this uses the mysql_hrd connection
             ->where('is_deleted', 0)
             ->whereIn('id', [513, 514])

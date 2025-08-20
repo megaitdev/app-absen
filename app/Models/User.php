@@ -51,6 +51,7 @@ class User extends Authenticatable
             'is_hrd' => 'boolean',
             'supervised_units' => 'array',
             'supervised_divisis' => 'array',
+            'employees' => 'array',
         ];
     }
 

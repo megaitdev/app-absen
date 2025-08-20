@@ -109,7 +109,7 @@ class PicController extends Controller
                 'password' => bcrypt($request->password),
                 'pic' => $request->pic,
                 'role' => 'pic',
-                'employees' => $request->selected_employee_ids ?? null,
+                'employees' => json_decode($request->selected_employee_ids) ?? null,
             ]);
             return redirect('/settings')->with('success-pic', 'PIC created successfully.');
         } else {
@@ -120,7 +120,7 @@ class PicController extends Controller
     function showPic($id)
     {
         $pic = User::find($id);
-        $employeeIds = json_decode($pic->employees);
+        $employeeIds = $pic->employees;
 
         $employees = [];
         if (!empty($employeeIds)) {
@@ -207,7 +207,7 @@ class PicController extends Controller
         )
             ->addIndexColumn()
             ->addColumn('mengelola', function ($row) {
-                return '<div class="btn btn-sm btn-info" onclick="javascript:showEmployees(' . $row->id . ')">' . count(json_decode($row->employees)) . ' Karyawan</div>';
+                return '<div class="btn btn-sm btn-info" onclick="javascript:showEmployees(' . $row->id . ')">' . count($row->employees) . ' Karyawan</div>';
             })
             ->addColumn('action', function ($row) {
                 $action = '<div onclick="javascript:deletePic(' . $row->id . ')" class="btn btn-sm btn-outline-danger m-1"><i class="far fa-trash-alt"></i></div>';

@@ -1039,7 +1039,7 @@ class ApiReportController extends Controller
     {
         $arc = new ApiReportController();
         $pic = User::find($picID);
-        $listEmployeeIDs = json_decode($pic->employees, true);
+        $listEmployeeIDs = $pic->employees;
         $employees = Employee::whereIn('id', $listEmployeeIDs)->get(['id', 'nama', 'nip'])->keyBy('id')->toArray();
         $listUnitNames = count($listUnitNames = $this->getUniqueUnitNames($listEmployeeIDs)) > 1 ? implode(', ', $listUnitNames) : (count($listUnitNames) == 1 ? $listUnitNames[0] : '-');
         $listPangkatNames = count($listPangkatNames = $this->getUniquePangkatNames($listEmployeeIDs)) > 1 ? implode('-', $listPangkatNames) : (count($listPangkatNames) == 1 ? $listPangkatNames[0] : '-');
@@ -1369,7 +1369,7 @@ class ApiReportController extends Controller
         $arc = new ApiReportController();
         $periode = $arc->getPeriodeReport($picID);
         $pic = User::find($picID);
-        $totalEmployes = count(json_decode($pic->employees, true));
+        $totalEmployes = count($pic->employees);
         $timeEveryEmployee = 5; // in Second
         $timeout = $totalEmployes * $timeEveryEmployee;
 
@@ -1397,7 +1397,7 @@ class ApiReportController extends Controller
     {
         $arc = new ApiReportController();
         $pic = User::find($picID);
-        $listEmployeeIDs = json_decode($pic->employees, true);
+        $listEmployeeIDs = $pic->employees;
         $indexEmployee = 0;
         foreach ($listEmployeeIDs as $employee_id) {
             $arc = new ApiReportController();
@@ -1736,7 +1736,7 @@ class ApiReportController extends Controller
     {
         if (Auth::user()->role == 'pic') {
             $user = Auth::user();
-            $listEmployee = json_decode($user->employees, true);
+            $listEmployee = $user->employees;
             return DataTables()->of(
                 Employee::query()
                     ->whereIn('id', $listEmployee)

@@ -17,6 +17,7 @@ use App\Http\Controllers\Settings\PicController;
 use App\Http\Controllers\Settings\ScheduleController;
 use App\Http\Controllers\Settings\SettingController;
 use App\Http\Controllers\Settings\ShiftController;
+use App\Http\Controllers\Perizinan\PerizinanController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -134,6 +135,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/employee/need-update/{employee:id}', [EmployeeController::class, 'getEmployeeNeedUpdate']);
     Route::post('/employee/need-update/edit/{employee:id}', [EmployeeController::class, 'editEmployeeNeedUpdate']);
     Route::get('/employee/synchronize', [EmployeeController::class, 'synchronizeEmployees']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Menu Perizinan
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/perizinan', [PerizinanController::class, 'index'])->name('perizinan.index');
+    Route::get('/perizinan/cuti', [PerizinanController::class, 'cuti'])->name('perizinan.cuti');
+    Route::post('/perizinan/cuti/store', [PerizinanController::class, 'storeCuti'])->name('perizinan.cuti.store');
+    Route::get('/perizinan/ajax/employee-info', [PerizinanController::class, 'getEmployeeInfo']);
+    Route::get('/perizinan/ajax/search-employee', [PerizinanController::class, 'searchEmployee'])->name('perizinan.ajax.search-employee');
+    Route::get('/perizinan/izin', [PerizinanController::class, 'izin'])->name('perizinan.izin');
+    Route::post('/perizinan/izin/store', [PerizinanController::class, 'storeIzin'])->name('perizinan.izin.store');
+    Route::get('/perizinan/verifikasi-absen', [PerizinanController::class, 'verifikasiAbsen'])->name('perizinan.verifikasi-absen');
+    Route::post('/perizinan/verifikasi-absen/store', [PerizinanController::class, 'storeVerifikasiAbsen'])->name('perizinan.verifikasi-absen.store');
+    Route::get('/perizinan/lembur', [PerizinanController::class, 'lembur'])->name('perizinan.lembur');
+    Route::post('/perizinan/lembur/store', [PerizinanController::class, 'storeLembur'])->name('perizinan.lembur.store');
 
     /*
     |--------------------------------------------------------------------------

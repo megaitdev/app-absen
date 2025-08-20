@@ -51,6 +51,11 @@ class Employee extends Model
         )->where('hrd_posisis.status', 1);
     }
 
+    public function jabatan()
+    {
+        return $this->hasOne(Jabatan::class, 'id', 'jabatan_id');
+    }
+
     public function pangkat()
     {
         return $this->hasOne(Pangkat::class, 'id', 'pangkat_id');
