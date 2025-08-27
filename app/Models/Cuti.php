@@ -2,13 +2,12 @@
 
 namespace App\Models;
 
-use App\Traits\HasWorkflowApproval;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Cuti extends Model
 {
-    use HasFactory, HasWorkflowApproval;
+    use HasFactory;
 
     protected $connection = 'mysql';
     protected $guarded = ['id'];

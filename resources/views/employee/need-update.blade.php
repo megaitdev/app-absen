@@ -270,12 +270,12 @@
                                 hidden>
                             </input>
                         @endif
-                        <!-- Modal Edit Employee Need Update-->
+                        <!-- Modal Edit Employee HRD-->
                         <div class="modal fade" id="modal-edit-employee-need-update">
                             <div class="modal-dialog modal-lg modal-dialog-centered">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h4 class="text-dark">Edit Employee Need Update</h4>
+                                        <h4 class="text-dark">Edit Employee HRD</h4>
                                     </div>
                                     <div class="modal-body">
                                         <form action="{{ url('employee/need-update/edit') }}" method="post">

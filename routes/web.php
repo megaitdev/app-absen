@@ -153,6 +153,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/perizinan/verifikasi-absen/store', [PerizinanController::class, 'storeVerifikasiAbsen'])->name('perizinan.verifikasi-absen.store');
     Route::get('/perizinan/lembur', [PerizinanController::class, 'lembur'])->name('perizinan.lembur');
     Route::post('/perizinan/lembur/store', [PerizinanController::class, 'storeLembur'])->name('perizinan.lembur.store');
+    Route::get('/perizinan/lembur/{lembur}/show', [PerizinanController::class, 'showLembur'])->name('perizinan.lembur.show');
+    Route::get('/perizinan/lembur/my-requests', [PerizinanController::class, 'myLemburRequests'])->name('perizinan.lembur.my-requests');
 
     /*
     |--------------------------------------------------------------------------
@@ -161,6 +163,7 @@ Route::middleware(['auth'])->group(function () {
     */
 
     Route::get('/report', [ReportController::class, 'report']);
+    Route::get('/report/print-report', [ReportController::class, 'printReport']);
     Route::get('/report/tab/{tab}', [ReportController::class, 'setTabActive']);
     Route::get('/report/ajax/get-periode', [Controller::class, 'getPeriodeReport']);
     Route::post('/report/ajax/set-periode', [Controller::class, 'setPeriodeReport']);
@@ -176,6 +179,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/report/ajax/datatable/list-unit', [ReportController::class, 'datatableListUnit']);
     Route::get('/report/ajax/datatable/list-employee', [ReportController::class, 'dataTableListEmployee']);
+
+    Route::get('/report/ajax/list-units/{pic_id}', [ReportController::class, 'listUnitManagedPic']);
+    Route::get('/report/ajax/list-employees/{pic_id}', [ReportController::class, 'listEmployeesManagedPic']);
 
 
     Route::get('/report/employee/{employee:id}', [ReportController::class, 'reportEmployee']);
@@ -194,6 +200,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/v1/report/print/employee/{employee:id}', [ApiReportController::class, 'printEmployeeReport']);
     Route::get('/api/v1/report/print/unit/{unit:id}', [ApiReportController::class, 'printUnitReport']);
     Route::get('/api/v1/report/print/pic/{picID}', [ApiReportController::class, 'printPICReport']);
+    Route::get('/api/v1/report/pic/{picID}/employees', [ApiReportController::class, 'listPicEmployees']);
 
     Route::get('/api/v1/report/get-verifikasi/{verifikasi:id}', [ApiReportController::class, 'getVerifikasi']);
     Route::get('/api/v1/report/delete-verifikasi/{verifikasi:id}', [ApiReportController::class, 'deleteVerifikasi']);
@@ -215,6 +222,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/api/v1/report/get-attlog/{date}/{employee:id}', [ApiReportController::class, 'getAttlog']);
     Route::get('/api/v1/report/get-absen-stats/{employee:id}', [ApiReportController::class, 'getAttendanceStats']);
+    Route::get('/api/v1/report/get-report-stats/{employee:id}', [ApiReportController::class, 'getAttendanceStatsReport']);
+    Route::get('/api/v1/report/get-report-pic/{pic_id}', [ApiReportController::class, 'getReportPic']);
 
     Route::get('/api/v1/report/datatable/report-pic', [ApiReportController::class, 'datatableReportPic']);
     Route::get('/api/v1/report/generate/report-pic/{pic_id}', [ApiReportController::class, 'asyncGenerateReportEmployeesPic']);

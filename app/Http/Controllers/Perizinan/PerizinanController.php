@@ -84,6 +84,7 @@ class PerizinanController extends Controller
             'lampiran.*.max' => 'Ukuran file lampiran maksimal 5MB'
         ]);
 
+
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
@@ -147,7 +148,7 @@ class PerizinanController extends Controller
                 'lampiran' => !empty($lampiranPaths) ? json_encode($lampiranPaths) : null,
                 'status' => 'pending',
                 'level_persetujuan_saat_ini' => 0,
-                'riwayat_persetujuan' => json_encode([
+                'riwayat_persetujuan' => [
                     [
                         'level' => 0,
                         'action' => 'submitted',
@@ -158,7 +159,7 @@ class PerizinanController extends Controller
                         'timestamp' => now(),
                         'keterangan' => 'Pengajuan cuti disubmit'
                     ]
-                ])
+                ]
             ]);
 
             DB::commit();
@@ -505,7 +506,7 @@ class PerizinanController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'employee_id' => 'required|integer|exists:hrd_employees,id',
-            'tanggal_lembur' => 'required|date',
+            'tanggal_lembur' => 'required|date|after_or_equal:today',
             'jam_mulai' => 'required|date_format:H:i',
             'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
             'keterangan' => 'required|string|min:10|max:1000',
@@ -515,6 +516,7 @@ class PerizinanController extends Controller
         ], [
             'employee_id.required' => 'Karyawan harus dipilih.',
             'tanggal_lembur.required' => 'Tanggal lembur harus diisi.',
+            'tanggal_lembur.after_or_equal' => 'Tanggal lembur tidak boleh kurang dari hari ini.',
             'jam_mulai.required' => 'Jam mulai lembur harus diisi.',
             'jam_selesai.required' => 'Jam selesai lembur harus diisi.',
             'jam_selesai.after' => 'Jam selesai harus setelah jam mulai.',
@@ -543,8 +545,17 @@ class PerizinanController extends Controller
                     ->withInput();
             }
 
-            $jamMulai = Carbon::parse($request->tanggal_lembur . ' ' . $request->jam_mulai);
-            $jamSelesai = Carbon::parse($request->tanggal_lembur . ' ' . $request->jam_selesai);
+            // Check if employee already has overtime request for the same date
+            $existingLembur = Lembur::where('employee_id', $request->employee_id)
+                ->where('date', $request->tanggal_lembur)
+                ->where('status', '!=', 'rejected')
+                ->first();
+
+            if ($existingLembur) {
+                return redirect()->back()
+                    ->with('error', 'Karyawan sudah memiliki pengajuan lembur pada tanggal tersebut.')
+                    ->withInput();
+            }
 
             $lampiranPaths = [];
             if ($request->hasFile('lampiran')) {
@@ -554,7 +565,7 @@ class PerizinanController extends Controller
                     $uniqueCode = strtoupper(Str::random(3));
                     $filename = "LEMBUR-{$date}-{$formattedIdEmployee}-{$uniqueCode}." . $file->getClientOriginalExtension();
                     $path = $file->storeAs('perizinan/lembur', $filename, 'public');
-                    $lampiranPaths[] = $path;
+                    $lampiranPaths[] = $filename;
                 }
             }
 
@@ -571,8 +582,25 @@ class PerizinanController extends Controller
 
             $allEmployeeIds = collect($teamMemberIds)->unique();
             $lemburGroupId = Str::uuid(); // Generate a unique ID for this group of overtime requests
+            $totalEmployees = 0;
 
             foreach ($allEmployeeIds as $memberId) {
+                // Check if this employee is managed by current user
+                $memberEmployee = $managedEmployees->where('id', $memberId)->first();
+                if (!$memberEmployee) {
+                    continue; // Skip employees not managed by current user
+                }
+
+                // Check for existing overtime on the same date
+                $existingMemberLembur = Lembur::where('employee_id', $memberId)
+                    ->where('date', $request->tanggal_lembur)
+                    ->where('status', '!=', 'rejected')
+                    ->first();
+
+                if ($existingMemberLembur) {
+                    continue; // Skip if already has overtime request
+                }
+
                 Lembur::create([
                     'employee_id' => $memberId,
                     'date' => $request->tanggal_lembur,
@@ -580,25 +608,87 @@ class PerizinanController extends Controller
                     'selesai_lembur' => $request->jam_selesai,
                     'keterangan' => $request->keterangan,
                     'lampiran' => !empty($lampiranPaths) ? json_encode($lampiranPaths) : null,
-                    'lembur' => 'terusan', // Assuming 'terusan' as default
-                    'status' => 'pending',
-                    'submitted_by' => Auth::id(),
-                    'submitted_at' => now(),
-                    'group_id' => $lemburGroupId, // Link submissions together
-                    'is_team_lead' => ($memberId == $employee->id), // Mark the main submitter
+                    'lembur' => 'terusan',
+                    'group_id' => $lemburGroupId,
+                    'is_team_lead' => ($memberId == $employee->id),
                 ]);
+
+                $totalEmployees++;
+            }
+
+            if ($totalEmployees === 0) {
+                DB::rollback();
+                return redirect()->back()
+                    ->with('error', 'Tidak ada karyawan yang berhasil diproses untuk pengajuan lembur.')
+                    ->withInput();
             }
 
             DB::commit();
 
+            $message = $totalEmployees === 1
+                ? 'Pengajuan lembur berhasil disubmit dan sedang menunggu persetujuan.'
+                : "Pengajuan lembur berhasil disubmit untuk {$totalEmployees} karyawan dan sedang menunggu persetujuan.";
+
             return redirect()->route('perizinan.index')
-                ->with('success', 'Pengajuan lembur berhasil disubmit untuk ' . $allEmployeeIds->count() . ' karyawan. Nomor grup: ' . $lemburGroupId);
+                ->with('success', $message);
         } catch (\Exception $e) {
             DB::rollback();
+            // Clean up uploaded files
+            if (!empty($lampiranPaths)) {
+                foreach ($lampiranPaths as $path) {
+                    Storage::disk('public')->delete('perizinan/lembur/' . $path);
+                }
+            }
             return redirect()->back()
                 ->with('error', 'Terjadi kesalahan saat menyimpan pengajuan lembur: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+
+    public function showLembur(Lembur $lembur)
+    {
+        // Check if user has access to view this overtime request
+        $managedEmployees = $this->getManagedEmployees();
+        $employee = $managedEmployees->where('id', $lembur->employee_id)->first();
+
+        if (!$employee) {
+            abort(403, 'Anda tidak memiliki akses untuk melihat pengajuan lembur ini.');
+        }
+
+        $lembur->load(['employee', 'submittedBy', 'approvedBySupervisor', 'approvedByHrd', 'workflowHistories.user']);
+
+        $data = [
+            'title' => 'Detail Lembur',
+            'slug' => 'perizinan',
+            'csses' => [],
+            'scripts' => [],
+            'lembur' => $lembur,
+            'employee' => $employee,
+        ];
+
+        return view('perizinan.lembur-detail', $data);
+    }
+
+    public function myLemburRequests()
+    {
+        $managedEmployees = $this->getManagedEmployees();
+        $employeeIds = $managedEmployees->pluck('id');
+
+        $lemburRequests = Lembur::whereIn('employee_id', $employeeIds)
+            ->with(['employee', 'submittedBy', 'workflowHistories'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        $data = [
+            'title' => 'Pengajuan Lembur Saya',
+            'slug' => 'perizinan',
+            'csses' => [],
+            'scripts' => [],
+            'lemburRequests' => $lemburRequests,
+            'managedEmployees' => $managedEmployees,
+        ];
+
+        return view('perizinan.lembur-requests', $data);
     }
 
     /**

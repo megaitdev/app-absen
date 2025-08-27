@@ -235,11 +235,13 @@
                                                 <div class="form-group">
                                                     <label for="pilih_karyawan">Pilih Karyawan <span
                                                             class="required">*</span></label>
-                                                    <select class="form-control @error('employee_id') is-invalid @enderror" id="pilih_karyawan" name="employee_id"
-                                                        required>
+                                                    <select class="form-control @error('employee_id') is-invalid @enderror"
+                                                        id="pilih_karyawan" name="employee_id" required>
                                                         <option value="">-- Pilih Karyawan --</option>
                                                         @foreach ($managedEmployees as $employee)
-                                                            <option value="{{ $employee->id }}" {{ old('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->nama }} -
+                                                            <option value="{{ $employee->id }}"
+                                                                {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
+                                                                {{ $employee->nama }} -
                                                                 {{ $employee->nip ?? 'No NIP' }}</option>
                                                         @endforeach
                                                     </select>
@@ -281,7 +283,8 @@
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="unit_kerja">Unit Kerja</label>
-                                                <input type="text" class="form-control" id="unit_kerja" name="unit_kerja"
+                                                <input type="text" class="form-control" id="unit_kerja"
+                                                    name="unit_kerja"
                                                     value="{{ $managedEmployees->count() == 1 ? $managedEmployees->first()->unit->nama ?? '-' : '' }}"
                                                     readonly>
                                             </div>
@@ -299,18 +302,39 @@
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="jenis_cuti">Jenis Cuti <span class="required">*</span></label>
-                                                <select class="form-control @error('jenis_cuti') is-invalid @enderror" id="jenis_cuti" name="jenis_cuti" required>
+                                                <select class="form-control @error('jenis_cuti') is-invalid @enderror"
+                                                    id="jenis_cuti" name="jenis_cuti" required>
                                                     <option value="">Pilih Jenis Cuti</option>
-                                                    <option value="tahunan" {{ old('jenis_cuti') == 'tahunan' ? 'selected' : '' }}>Cuti Tahunan</option>
-                                                    <option value="sakit" {{ old('jenis_cuti') == 'sakit' ? 'selected' : '' }}>Cuti Sakit</option>
-                                                    <option value="melahirkan" {{ old('jenis_cuti') == 'melahirkan' ? 'selected' : '' }}>Cuti Melahirkan</option>
-                                                    <option value="menikah" {{ old('jenis_cuti') == 'menikah' ? 'selected' : '' }}>Cuti Menikah</option>
-                                                    <option value="khitan" {{ old('jenis_cuti') == 'khitan' ? 'selected' : '' }}>Cuti Khitan Anak</option>
-                                                    <option value="baptis" {{ old('jenis_cuti') == 'baptis' ? 'selected' : '' }}>Cuti Baptis Anak</option>
-                                                    <option value="keluarga_meninggal" {{ old('jenis_cuti') == 'keluarga_meninggal' ? 'selected' : '' }}>Cuti Keluarga Meninggal</option>
-                                                    <option value="ibadah_haji" {{ old('jenis_cuti') == 'ibadah_haji' ? 'selected' : '' }}>Cuti Ibadah Haji</option>
-                                                    <option value="penting" {{ old('jenis_cuti') == 'penting' ? 'selected' : '' }}>Cuti Penting</option>
-                                                    <option value="besar" {{ old('jenis_cuti') == 'besar' ? 'selected' : '' }}>Cuti Besar</option>
+                                                    <option value="tahunan"
+                                                        {{ old('jenis_cuti') == 'tahunan' ? 'selected' : '' }}>Cuti Tahunan
+                                                    </option>
+                                                    <option value="sakit"
+                                                        {{ old('jenis_cuti') == 'sakit' ? 'selected' : '' }}>Cuti Sakit
+                                                    </option>
+                                                    <option value="melahirkan"
+                                                        {{ old('jenis_cuti') == 'melahirkan' ? 'selected' : '' }}>Cuti
+                                                        Melahirkan</option>
+                                                    <option value="menikah"
+                                                        {{ old('jenis_cuti') == 'menikah' ? 'selected' : '' }}>Cuti Menikah
+                                                    </option>
+                                                    <option value="khitan"
+                                                        {{ old('jenis_cuti') == 'khitan' ? 'selected' : '' }}>Cuti Khitan
+                                                        Anak</option>
+                                                    <option value="baptis"
+                                                        {{ old('jenis_cuti') == 'baptis' ? 'selected' : '' }}>Cuti Baptis
+                                                        Anak</option>
+                                                    <option value="keluarga_meninggal"
+                                                        {{ old('jenis_cuti') == 'keluarga_meninggal' ? 'selected' : '' }}>
+                                                        Cuti Keluarga Meninggal</option>
+                                                    <option value="ibadah_haji"
+                                                        {{ old('jenis_cuti') == 'ibadah_haji' ? 'selected' : '' }}>Cuti
+                                                        Ibadah Haji</option>
+                                                    <option value="penting"
+                                                        {{ old('jenis_cuti') == 'penting' ? 'selected' : '' }}>Cuti Penting
+                                                    </option>
+                                                    <option value="besar"
+                                                        {{ old('jenis_cuti') == 'besar' ? 'selected' : '' }}>Cuti Besar
+                                                    </option>
                                                 </select>
                                                 @error('jenis_cuti')
                                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -320,8 +344,8 @@
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="sisa_cuti">Sisa Cuti Tahunan</label>
-                                                <input type="text" class="form-control" id="sisa_cuti" name="sisa_cuti"
-                                                    value="12 hari" readonly>
+                                                <input type="text" class="form-control" id="sisa_cuti"
+                                                    name="sisa_cuti" value="12 hari" readonly>
                                                 <small class="text-muted">Sisa cuti tahunan yang dapat digunakan</small>
                                             </div>
                                         </div>
@@ -333,8 +357,10 @@
                                             <div class="form-group">
                                                 <label for="tanggal_mulai">Tanggal Mulai Cuti <span
                                                         class="required">*</span></label>
-                                                <input type="date" class="form-control @error('tanggal_mulai') is-invalid @enderror" id="tanggal_mulai"
-                                                    name="tanggal_mulai" value="{{ old('tanggal_mulai') }}" required>
+                                                <input type="date"
+                                                    class="form-control @error('tanggal_mulai') is-invalid @enderror"
+                                                    id="tanggal_mulai" name="tanggal_mulai"
+                                                    value="{{ old('tanggal_mulai') }}" required>
                                                 @error('tanggal_mulai')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
@@ -344,8 +370,10 @@
                                             <div class="form-group">
                                                 <label for="tanggal_selesai">Tanggal Selesai Cuti <span
                                                         class="required">*</span></label>
-                                                <input type="date" class="form-control @error('tanggal_selesai') is-invalid @enderror" id="tanggal_selesai"
-                                                    name="tanggal_selesai" value="{{ old('tanggal_selesai') }}" required>
+                                                <input type="date"
+                                                    class="form-control @error('tanggal_selesai') is-invalid @enderror"
+                                                    id="tanggal_selesai" name="tanggal_selesai"
+                                                    value="{{ old('tanggal_selesai') }}" required>
                                                 @error('tanggal_selesai')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
@@ -366,8 +394,8 @@
                                             <div class="form-group">
                                                 <label for="keterangan">Keterangan/Alasan Cuti <span
                                                         class="required">*</span></label>
-                                                <textarea class="form-control @error('keterangan') is-invalid @enderror" id="keterangan" name="keterangan" rows="4"
-                                                    placeholder="Jelaskan alasan pengajuan cuti..." required>{{ old('keterangan') }}</textarea>
+                                                <textarea class="form-control @error('keterangan') is-invalid @enderror" id="keterangan" name="keterangan"
+                                                    rows="4" placeholder="Jelaskan alasan pengajuan cuti..." required>{{ old('keterangan') }}</textarea>
                                                 @error('keterangan')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
@@ -381,8 +409,8 @@
                                         <div class="col-12">
                                             <div class="form-group">
                                                 <label for="alamat_cuti">Alamat Selama Cuti</label>
-                                                <textarea class="form-control @error('alamat_cuti') is-invalid @enderror" id="alamat_cuti" name="alamat_cuti" rows="3"
-                                                    placeholder="Alamat yang dapat dihubungi selama cuti...">{{ old('alamat_cuti') }}</textarea>
+                                                <textarea class="form-control @error('alamat_cuti') is-invalid @enderror" id="alamat_cuti" name="alamat_cuti"
+                                                    rows="3" placeholder="Alamat yang dapat dihubungi selama cuti...">{{ old('alamat_cuti') }}</textarea>
                                                 @error('alamat_cuti')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
@@ -646,31 +674,31 @@
             // Function to add new files to existing files
             function addNewFiles(newFiles) {
                 const dt = new DataTransfer();
-                
+
                 // Add existing files
                 const existingFiles = fileInput.files;
                 for (let i = 0; i < existingFiles.length; i++) {
                     dt.items.add(existingFiles[i]);
                 }
-                
+
                 // Add new files
                 for (let i = 0; i < newFiles.length; i++) {
                     // Check if file already exists (by name and size)
                     let fileExists = false;
                     for (let j = 0; j < existingFiles.length; j++) {
-                        if (existingFiles[j].name === newFiles[i].name && 
+                        if (existingFiles[j].name === newFiles[i].name &&
                             existingFiles[j].size === newFiles[i].size) {
                             fileExists = true;
                             break;
                         }
                     }
-                    
+
                     // Only add if file doesn't exist
                     if (!fileExists) {
                         dt.items.add(newFiles[i]);
                     }
                 }
-                
+
                 // Update file input
                 fileInput.files = dt.files;
                 displayFiles(dt.files);

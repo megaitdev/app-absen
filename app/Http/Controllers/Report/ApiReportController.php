@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Report;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Resource\CssController;
 use App\Http\Controllers\Resource\ScriptController;
-use App\Jobs\GenerateReportEmployeesPicJob;
 use App\Models\Cuti;
 use App\Models\ftm\AttLog;
 use App\Models\Holiday;
@@ -22,9 +21,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon as SupportCarbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -35,7 +32,6 @@ use SaeedVaziry\LaravelAsync\Facades\AsyncHandler;
 
 class ApiReportController extends Controller
 {
-
     function getAttLog($date, Employee $employee)
     {
         $date = Carbon::parse($date);
@@ -1034,6 +1030,20 @@ class ApiReportController extends Controller
         return $input;
     }
 
+    function getReportEmployees($listEmployeeIDs, $picID)
+    {
+        $arc = new ApiReportController();
+        $periode = $arc->getPeriodeReport($picID);
+        $result = [];
+        $indexEmployee = 1;
+        foreach ($listEmployeeIDs as $employee_id) {
+            $reportEmployee = $arc->getAttendanceStats($employee_id, $periode)->getData()->data;
+            $result[] = $reportEmployee;
+            $indexEmployee++;
+        }
+        return $result;
+    }
+
 
     function printPICReport($picID)
     {
@@ -1106,9 +1116,25 @@ class ApiReportController extends Controller
         // $writer->save('php://output');
     }
 
+    // Simple list of PIC's employees for dynamic report rendering
+    public function listPicEmployees($picID)
+    {
+        $user = User::findOrFail($picID);
+        $ids = $user->employees ?? [];
+        $employees = Employee::whereIn('id', $ids)
+            ->with('unit')
+            ->orderBy('nama')
+            ->get(['id', 'nama', 'nip']);
+        return response()->json([
+            'success' => true,
+            'data' => $employees,
+            'count' => $employees->count(),
+        ]);
+    }
 
 
-    function getAttendanceStats($employee_id, $periode = null)
+
+    function getAttendanceStatsR0($employee_id, $periode = null)
     {
         if (is_null($periode)) {
             $controller = new Controller();
@@ -1351,6 +1377,313 @@ class ApiReportController extends Controller
         ]);
     }
 
+    function getAttendanceStats($employee_id, $periode = null)
+    {
+        // 1. Inisialisasi Periode
+        if (is_null($periode)) {
+            $controller = new Controller();
+            $periode = $controller->getPeriodeReport();
+        }
+        $startDate = $periode->start;
+        $endDate = $periode->end;
+
+        // 2. Ambil Data Karyawan dan Lookup List
+        $employee = Employee::find($employee_id);
+        if (!$employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
+        }
+        $jenisIzinList = JenisIzin::pluck('izin', 'id')->toArray();
+
+        // 3. Query Utama dengan Eager Loading yang Efisien
+        $reports = Report::where('employee_id', $employee_id)
+            ->whereNotNull('shift_id')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->with('shift', 'izin', 'lembur') // Cuti, verifikasi, dll. adalah bagian dari report, tidak perlu eager load terpisah jika sudah ada kolomnya.
+            ->get();
+        $shifts = $employee->shifts($startDate, $endDate);
+
+        // 4. Inisialisasi Statistik
+        $stats = [
+            'employee_id' => $employee_id,
+            'total_hari' =>  count($shifts),
+            'hadir' => 0,
+            'tidak_hadir' => 0,
+            'cuti' => 0,
+            'izin' => 0,
+            'sakit' => 0,
+            'alpha' => 0,
+            'verifikasi' => 0,
+            'pergi_kembali' => 0,
+            'pergi_tidak_kembali' => 0,
+            'terlambat' => 0,
+            'pulang_cepat' => 0,
+            'lembur' => 0,
+            'total_menit_kerja' => 0,
+            'total_menit_hadir' => 0,
+            'total_menit_tidak_hadir' => 0,
+            'total_menit_hilang' => 0,
+            'total_menit_potongan' => 0,
+            'total_menit_terlambat' => 0,
+            'total_menit_pulang_cepat' => 0,
+            'total_menit_lembur' => 0,
+            'total_menit_akumulasi_lembur' => 0,
+            'total_ut' => 0,
+            'total_um' => 0,
+            'total_uk' => 0,
+            'total_uml' => 0,
+            'total_umll' => 0,
+            'total_utl' => 0,
+        ];
+
+        // 5. Satu Loop untuk Memproses Semua Data
+        foreach ($reports as $report) {
+            // Akumulasi umum
+            $stats['total_menit_kerja'] += $report->shift->total_menit_kerja ?? 0;
+            $stats['total_menit_hilang'] += $report->jam_hilang_efektif;
+            if ($report->is_verifikasi) {
+                $stats['verifikasi']++;
+            }
+
+            // Kalkulasi uang (jika ada)
+            $stats['total_uml'] += $report->uml;
+            $stats['total_umll'] += $report->umll;
+            $stats['total_utl'] += $report->utl;
+
+            // Logika Berdasarkan Status Kehadiran
+            if ($report->status == 'Hadir') {
+                $stats['hadir']++;
+                $stats['total_menit_hadir'] += $report->jam_kerja_efektif;
+
+                if ($report->status_masuk == 'Terlambat') {
+                    $stats['terlambat']++;
+                    $stats['total_menit_terlambat'] += $report->jam_hilang_efektif;
+                }
+                if ($report->status_keluar == 'Pulang Cepat') {
+                    $stats['pulang_cepat']++;
+                    $stats['total_menit_pulang_cepat'] += $report->jam_hilang_efektif;
+                }
+            } else { // Tidak Hadir
+                $stats['tidak_hadir']++;
+                $stats['total_menit_tidak_hadir'] += $report->is_cuti ? $report->jam_kerja_efektif : $report->jam_hilang_efektif;
+
+                if ($report->is_cuti) {
+                    $stats['cuti']++;
+                }
+                if ($report->is_izin) {
+                    $stats['izin']++;
+                    if ($report->izin && isset($jenisIzinList[$report->izin->jenis_izin])) {
+                        $jenisIzin = $jenisIzinList[$report->izin->jenis_izin];
+                        if ($jenisIzin == 'Izin Sakit') $stats['sakit']++;
+                        elseif ($jenisIzin == 'Izin Tidak Masuk') $stats['alpha']++;
+                        elseif ($jenisIzin == 'Izin Pergi Kembali') $stats['pergi_kembali']++;
+                        elseif ($jenisIzin == 'Izin Pergi Tidak Kembali') $stats['pergi_tidak_kembali']++;
+                    }
+                }
+            }
+
+            // Logika Lembur
+            if ($report->is_lembur || $report->is_lembur_libur) {
+                $stats['lembur']++;
+                $stats['total_menit_lembur'] += $report->is_lembur ? $report->lembur_efektif : $report->jam_kerja_efektif;
+                $stats['total_menit_akumulasi_lembur'] += $report->lembur_akumulasi;
+            }
+
+            // Logika Potongan Khusus Pangkat 1
+            if ($employee->pangkat_id == 1) {
+                $stats['total_ut'] += $report->ut;
+                $stats['total_uk'] += $report->uk;
+                $stats['total_um'] += $report->um;
+
+                $isIzinPotong = $report->izin && $jenisIzinList[$report->izin->jenis_izin] != 'Izin Sakit' && !$report->is_cuti;
+                $isTerlambatPulangCepat = $report->status == 'Hadir' && ($report->status_masuk == 'Terlambat' || $report->status_keluar == 'Pulang Cepat');
+
+                if ($isIzinPotong || $isTerlambatPulangCepat) {
+                    $stats['total_menit_potongan'] += $report->jam_hilang_efektif;
+                }
+            }
+        }
+
+        // 6. Konversi Menit ke Jam
+        $menit_to_jam_keys = [
+            'kerja',
+            'hadir',
+            'tidak_hadir',
+            'hilang',
+            'potongan',
+            'terlambat',
+            'pulang_cepat',
+            'lembur',
+            'akumulasi_lembur'
+        ];
+        foreach ($menit_to_jam_keys as $key) {
+            $stats["total_jam_{$key}"] = $stats["total_menit_{$key}"] / 60;
+        }
+
+        // 7. Kalkulasi Persentase
+        if ($stats['total_hari'] > 0) {
+            $percentage_keys = [
+                'hadir',
+                'tidak_hadir',
+                'cuti',
+                'izin',
+                'sakit',
+                'alpha',
+                'pergi_kembali',
+                'pergi_tidak_kembali',
+                'lembur',
+                'terlambat',
+                'pulang_cepat'
+            ];
+            foreach ($percentage_keys as $key) {
+                $stats["persentase_{$key}"] = round(($stats[$key] / $stats['total_hari']) * 100, 1);
+            }
+        }
+
+        // 8. Kembalikan Response
+        return response()->json([
+            'success' => true,
+            'data' => $stats
+        ]);
+    }
+    function getAttendanceStatsReport($employee_id, $periode = null)
+    {
+        // 1. Inisialisasi Periode
+        if (is_null($periode)) {
+            $controller = new Controller();
+            $periode = $controller->getPeriodeReport();
+        }
+        $startDate = $periode->start;
+        $endDate = $periode->end;
+
+
+        // 2. Ambil Data Karyawan dan Lookup List
+        $employee = Employee::find($employee_id);
+        if (!$employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
+        }
+        $jenisIzinList = JenisIzin::pluck('izin', 'id')->toArray();
+
+        // 3. Query Utama dengan Eager Loading yang Efisien
+        $reports = Report::where('employee_id', $employee_id)
+            ->whereNotNull('shift_id')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->with('shift', 'izin', 'lembur') // Cuti, verifikasi, dll. adalah bagian dari report, tidak perlu eager load terpisah jika sudah ada kolomnya.
+            ->get();
+        $shifts = $employee->shifts($startDate, $endDate);
+
+
+        // 4. Inisialisasi Statistik
+        $stats = [
+            'total_hari' =>  count($shifts),
+            'lembur' => 0,
+            'total_menit_kerja' => 0,
+            'total_menit_hilang' => 0,
+            'total_menit_potongan' => 0,
+            'total_menit_lembur' => 0,
+            'total_menit_akumulasi_lembur' => 0,
+            'total_ut' => $reports->sum('ut'),
+            'total_um' => $reports->sum('um'),
+            'total_uk' => $reports->sum('uk'),
+            'total_uml' => $reports->sum('uml'),
+            'total_umll' => $reports->sum('umll'),
+            'total_utl' => $reports->sum('utl'),
+        ];
+
+        // 5. Satu Loop untuk Memproses Semua Data
+        foreach ($reports as $report) {
+            // Akumulasi umum
+            $stats['total_menit_kerja'] += $report->shift->total_menit_kerja ?? 0;
+            $stats['total_menit_hilang'] += $report->jam_hilang_efektif;
+
+            // Logika Lembur
+            if ($report->is_lembur || $report->is_lembur_libur) {
+                $stats['lembur']++;
+                $stats['total_menit_lembur'] += $report->is_lembur ? $report->lembur_efektif : $report->jam_kerja_efektif;
+                $stats['total_menit_akumulasi_lembur'] += $report->lembur_akumulasi;
+            }
+
+            // Logika Potongan Khusus Pangkat 1
+            if ($employee->pangkat_id == 1) {
+                $isIzinPotong = $report->izin && $jenisIzinList[$report->izin->jenis_izin] != 'Izin Sakit' && !$report->is_cuti;
+                $isTerlambatPulangCepat = $report->status == 'Hadir' && ($report->status_masuk == 'Terlambat' || $report->status_keluar == 'Pulang Cepat');
+                $isBelumScan = $report->status == 'Hadir' && (is_null($report->scan_masuk_murni) || is_null($report->scan_keluar_murni));
+                $isTidakHadir = $report->status == 'Tidak Hadir';
+
+                if ($isIzinPotong || $isTerlambatPulangCepat || $isBelumScan) {
+                    $stats['total_menit_potongan'] += $report->jam_hilang_efektif;
+                }
+            }
+        }
+
+        // 6. Konversi Menit ke Jam
+        $menit_to_jam_keys = [
+            'hilang',
+            'potongan',
+            'lembur',
+            'akumulasi_lembur'
+        ];
+        foreach ($menit_to_jam_keys as $key) {
+            $stats["total_jam_{$key}"] = $stats["total_menit_{$key}"] / 60;
+        }
+
+
+        // 8. Kembalikan Response
+        return response()->json([
+            'success' => true,
+            'data' => $stats
+        ]);
+    }
+
+    function getReportPic($picID)
+    {
+        $arc = new ApiReportController();
+        $periode = $arc->getPeriodeReport($picID);
+        $pic = User::find($picID);
+        $listEmployeeIDs = $pic->employees ?? [];
+        $listUnitNames = count($listUnitNames = $this->getUniqueUnitNames($listEmployeeIDs)) > 1 ? implode(', ', $listUnitNames) : (count($listUnitNames) == 1 ? $listUnitNames[0] : '-');
+        $listPangkatNames = count($listPangkatNames = $this->getUniquePangkatNames($listEmployeeIDs)) > 1 ? implode('-', $listPangkatNames) : (count($listPangkatNames) == 1 ? $listPangkatNames[0] : '-');
+
+        $employees = Employee::whereIn('id', $listEmployeeIDs)
+            ->with([
+                'unit' => fn($query) => $query->select('hrd_units.id', 'hrd_units.unit'),
+                'divisi' => fn($query) => $query->select('hrd_divisis.id', 'hrd_divisis.divisi'),
+            ])
+            ->get(['id', 'nama', 'nip', 'pangkat_id'])
+            ->keyBy('id')->toArray();
+        $reportData = [];
+        foreach ($listEmployeeIDs as $employee_id) {
+            $reportEmployee = $arc->getAttendanceStatsReport($employee_id, $periode)->getData()->data;
+            $reportData[] = [
+                'employee_id' => $employee_id,
+                'nama' => $employees[$employee_id]['nama'] ?? 'N/A',
+                'nip' => $employees[$employee_id]['nip'] ?? 'N/A',
+                'pangkat' => $employees[$employee_id]['pangkat_id'] ?? null,
+                'unit_id' => $employees[$employee_id]['unit']['id'] ?? null,
+                'unit' => $employees[$employee_id]['unit']['unit'] ?? 'N/A',
+                'divisi_id' => $employees[$employee_id]['divisi']['id'] ?? null,
+                'divisi' => $employees[$employee_id]['divisi']['divisi'] ?? 'N/A',
+                'stats' => $reportEmployee
+            ];
+        }
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'pic' => [
+                    'id' => $pic->id,
+                    'nama' => $pic->nama,
+                    'title' => $pic->pic
+                ],
+                'unit' => $pic->getManagedUnits(),
+                'unit_names' => $listUnitNames,
+                'pangkat' => $listPangkatNames,
+                'periode' => $periode,
+                'employeesIDs' => $listEmployeeIDs,
+                'employees_count' => count($listEmployeeIDs),
+                'reports' => $reportData,
+            ]
+        ]);
+    }
+
 
     // Section: Generate Report
     function asyncGenerateReportEmployeesPic($picID)
@@ -1372,6 +1705,8 @@ class ApiReportController extends Controller
         $totalEmployes = count($pic->employees);
         $timeEveryEmployee = 5; // in Second
         $timeout = $totalEmployes * $timeEveryEmployee;
+        // $arc = new ApiReportController();
+        // $arc->generateReportPic($picID, $periode);
 
         AsyncHandler::timeout($timeout)->dispatch(function () use ($picID, $periode, $timeout) {
             info("Starting report generation for user: " . $picID);
@@ -1577,6 +1912,7 @@ class ApiReportController extends Controller
 
             $shift = $shifts[$date] ?? null;
 
+
             if (!$shift) {
                 $report['shift_id'] = null;
                 if ($scanLogForDate->isNotEmpty()) {
@@ -1594,6 +1930,7 @@ class ApiReportController extends Controller
                         $report['shift_id'] = $this->shiftLemburID();
                         $report['utl'] = 1;
                         $report['umll'] = $durasiLembur > 240 ? 1 : 0;
+                        $report['lembur_akumulasi'] = $generate->getJamLemburAkumulasi($durasiLembur, 'Lembur Libur', $employee->pangkat_id);
                     }
                     $report['uk'] = 0;
                     $report['um'] = 0;
@@ -1610,6 +1947,7 @@ class ApiReportController extends Controller
                     $report['scan_keluar_murni'] = $check->out;
                     $report['scan_masuk_efektif'] = $shift->jam_masuk;
                     $report['scan_keluar_efektif'] = $shift->jam_keluar;
+                    $report['ut'] = 1;
                     $jamHilangMurni = 0;
                     $jamHilangEfektif = 0;
 
@@ -1684,6 +2022,9 @@ class ApiReportController extends Controller
                     if ($employee->pangkat_id == 1 && $report['jam_kerja_efektif'] <= 240) {
                         $report['uk'] = 0;
                         $report['um'] = 0;
+                    } else {
+                        $report['uk'] = 1;
+                        $report['um'] = 1;
                     }
                 } else {
                     if ($employee->pangkat_id == 1) {

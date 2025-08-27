@@ -10,6 +10,16 @@ class ScriptController extends Controller
     public function getListScript($page = null)
     {
         switch ($page) {
+            case "print-report":
+                return [
+                    // Put path script below here
+                    "library/bootstrap-daterangepicker/daterangepicker.js",
+                    "library/sweetalert2/dist/sweetalert2.min.js",
+                    "library/html2canvas/html2canvas.min.js",
+                    "library/jspdf/jspdf.umd.min.js",
+                    "library/select2/dist/js/select2.min.js",
+                    "js/report/{$page}.js",
+                ];
             case "report-employee":
                 return [
                     // Put path script below here

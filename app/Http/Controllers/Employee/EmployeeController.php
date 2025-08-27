@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Resource\CssController;
 use App\Http\Controllers\Resource\ScriptController;
+use App\Models\EmployeeHrd;
 use App\Models\ftm\Cabang;
 use App\Models\ftm\Departemen;
 use App\Models\ftm\EmployeeFtm;
@@ -14,6 +15,7 @@ use App\Models\mak_hrd\Posisi;
 use App\Models\mak_hrd\Unit;
 use App\Models\mak_matrix_produk\Kategori;
 use App\Models\mak_matrix_produk\Produk;
+use App\Models\PosisiHrd;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -72,6 +74,9 @@ class EmployeeController extends Controller
             Employee::where('id', $employee->id)->update([
                 'pin' => $employee->pin
             ]);
+            EmployeeHrd::where('id', $employee->id)->update([
+                'pin' => $employee->pin
+            ]);
         }
     }
 
@@ -124,8 +129,17 @@ class EmployeeController extends Controller
             'nip' => $request->nip,
             'pin' => $request->pin_need_update,
         ]);
+        EmployeeHrd::where('id', $employee->id)->update([
+            'nama' => $request->nama,
+            'nip' => $request->nip,
+            'pin' => $request->pin_need_update,
+        ]);
 
         Posisi::where('id', $employee->posisi->id)->update([
+            'divisi_id' => $request->divisi,
+            'unit_id' => $request->unit
+        ]);
+        PosisiHrd::where('employee_id', $employee->id)->update([
             'divisi_id' => $request->divisi,
             'unit_id' => $request->unit
         ]);

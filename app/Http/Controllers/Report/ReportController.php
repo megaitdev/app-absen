@@ -22,6 +22,7 @@ use App\Models\JenisIzin;
 use App\Models\Lembur;
 use App\Models\Progress;
 use App\Models\Schedule;
+use App\Models\User;
 use App\Models\VerifikasiAbsen;
 use Carbon\CarbonPeriod;
 use DateInterval;
@@ -60,6 +61,20 @@ class ReportController extends Controller
             return view('report.pic.report', $data);
         }
     }
+    function printReport()
+    {
+        $data = [
+            'title' => 'Print Report',
+            'slug' => 'report',
+            'scripts' => $this->script->getListScript('print-report'),
+            'csses' => $this->css->getListCss('print-report'),
+            'periode' => $this->getPeriodeReport(),
+            'pic' => Auth::user()
+        ];
+
+
+        return view('report.print-report', $data);
+    }
 
     public function setTabActive($tab)
     {
@@ -93,7 +108,7 @@ class ReportController extends Controller
     {
         $report_tab = Session::get('report-tab-' . Auth::user()->id);
         if (!$report_tab) {
-            Session::put('report-tab-' . Auth::user()->id, 'unit');
+            Session::put('report-tab-' . Auth::user()->id, 'employee');
             $report_tab = Session::get('report-tab-' . Auth::user()->id);
         }
         return $report_tab;
@@ -500,6 +515,7 @@ class ReportController extends Controller
                         $report['shift_id'] = $this->shiftLemburID();
                         $report['utl'] = 1;
                         $report['umll'] = $durasiLembur > 240 ? 1 : 0;
+                        $report['lembur_akumulasi'] = $this->getJamLemburAkumulasi($durasiLembur, 'Lembur Libur', $employee->pangkat_id);
                     }
                     $report['uk'] = 0;
                     $report['um'] = 0;
@@ -516,6 +532,7 @@ class ReportController extends Controller
                     $report['scan_keluar_murni'] = $check->out;
                     $report['scan_masuk_efektif'] = $shift->jam_masuk;
                     $report['scan_keluar_efektif'] = $shift->jam_keluar;
+                    $report['ut'] = 1;
                     $jamHilangMurni = 0;
                     $jamHilangEfektif = 0;
 
@@ -592,6 +609,9 @@ class ReportController extends Controller
                     if ($employee->pangkat_id == 1 && $report['jam_kerja_efektif'] <= 240) {
                         $report['uk'] = 0;
                         $report['um'] = 0;
+                    } else {
+                        $report['uk'] = 1;
+                        $report['um'] = 1;
                     }
                 } else {
                     if ($employee->pangkat_id == 1) {
@@ -1118,5 +1138,21 @@ class ReportController extends Controller
             ->addIndexColumn()
             ->rawColumns(['perizinan'])
             ->make(true);
+    }
+
+    public function listUnitManagedPic($picID)
+    {
+        $pic = User::find($picID);
+        return response()->json(
+            $pic->getManagedUnits()
+        );
+    }
+
+    public function listEmployeesManagedPic($picID)
+    {
+        $pic = User::find($picID);
+        return response()->json(
+            $pic->managedEmployees()
+        );
     }
 }

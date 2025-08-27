@@ -9,7 +9,8 @@
             <div class="section-header d-flex bd-highlight mb-3">
                 <h1>{{ $title }}</h1>
                 <div class="btn btn-primary ml-3" id="generate-report">Generate Report</div>
-                <div class="btn btn-dark ml-3" id="print-report">Print Report</div>
+                <a href="{{ url('report/print-report') }}" class="btn btn-dark ml-3">Print Report</a>
+                <button class="btn btn-success ml-3" id="print-report">Print Excel</button>
                 <div class="btn btn-outline-dark ml-auto" id="filter-periode">
                     <i class="fas fa-calendar-alt mr-1"></i> {{ $periode->name }}
                 </div>

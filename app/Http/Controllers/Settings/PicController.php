@@ -42,7 +42,7 @@ class PicController extends Controller
             $pic->password = bcrypt($request->password);
         }
         $pic->pic = $request->pic;
-        $pic->employees = $request->selected_employee_ids;
+        $pic->employees = json_decode($request->selected_employee_ids);
         $pic->save();
         return redirect(url('/settings'))->with('updated-pic', 'PIC update successfully.');
         return response()->json(['success' => 'PIC updated successfully.', 'data' => $request->all()]);
@@ -54,7 +54,7 @@ class PicController extends Controller
         $allEmployees = Employee::where('is_deleted', 0)->orderBy('nama', 'asc')->get();
         $units = Unit::where('status', 1)->orderBy('unit', 'asc')->get();
 
-        $selectedEmployeeIds = json_decode($pic->employees);
+        $selectedEmployeeIds = $pic->employees;
         if ($pic) {
             return response()->json([
                 'pic' => $pic,

@@ -850,7 +850,6 @@
             url: base_url() + 'settings/ajax/dasar-jadwal/employee/' + employee_id,
             method: 'GET',
             success: function(res) {
-                console.log(res);
 
                 // Create a timeline display for employee's schedules
                 // Menampilkan semua jadwal yang dimiliki karyawan
@@ -862,7 +861,12 @@
                 if (Array.isArray(res)) {
                     res.forEach(schedule => {
                         let startDate = new Date(schedule.start_date);
-                        let endDate = new Date(schedule.end_date);
+                        let endDate = new Date();
+                        if (schedule.end_date != null) {
+                            endDate = new Date(schedule.end_date);
+                        }
+
+                        console.log(schedule);
 
                         let startDateStr = startDate.toLocaleDateString('id-ID', {
                             day: 'numeric',
