@@ -79,7 +79,7 @@ class Employee extends Model
         return $this->hasMany(DasarJadwal::class, 'employee_id')->count();
     }
 
-    public function shifts($startDate, $endDate,)
+    public function shifts($startDate, $endDate)
     {
 
 
@@ -146,7 +146,7 @@ class Employee extends Model
             // For each date, find matching schedule
             foreach ($dasarJadwal as $dJ) {
                 // Check if current date falls within the dasarJadwal period
-                if ($currentDate->gte($dJ->start_date) && $currentDate->lte($dJ->end_date ?? Carbon::now())) {
+                if ($currentDate->gte($dJ->start_date) && $currentDate->lte($dJ->end_date ?? $endDate)) {
                     // Get the day of week (0=Sunday, 1=Monday, etc.)
                     $dayOfWeek = $currentDate->dayOfWeek;
 
@@ -177,6 +177,7 @@ class Employee extends Model
                 }
             }
         }
+
 
         return $result;
     }

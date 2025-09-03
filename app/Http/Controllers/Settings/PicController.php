@@ -69,8 +69,7 @@ class PicController extends Controller
 
     function delete($pic_id)
     {
-        $pic = User::find($pic_id);
-        $pic->delete();
+        User::where('id', $pic_id)->update(['is_active' => 0]);
         return response()->json(['success' => 'PIC deleted successfully.']);
     }
 
@@ -196,7 +195,7 @@ class PicController extends Controller
 
     function datatablePic(Request $request)
     {
-        $query = User::where('role', 'pic');
+        $query = User::where([['role', 'pic'], ['is_active', 1]]);
         $order = $request->input('order.0.name', '');
         $orderDir = $request->input('order.0.dir', '');
         if ($order == 'mengelola') {

@@ -1940,6 +1940,10 @@ class ApiReportController extends Controller
                 }
             } else {
                 $report['shift_id'] = $shift->id;
+                if (!$shift->is_sameday) {
+                    $dateTomorow = (new Carbon($date))->addDay(1)->format('Y-m-d');
+                    $scanLogForDate = $scanLogForDate->concat($scanLogs->where('date', $dateTomorow));
+                }
                 if ($scanLogForDate->isNotEmpty()) {
                     $check = $generate->getCheckInCheckOut($scanLogForDate, $shift);
                     $report['status'] = 'Hadir';

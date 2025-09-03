@@ -44,12 +44,19 @@
 
                 {{-- Modal Edit Shift --}}
                 <div class="modal fade" id="modal-edit-shift">
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h4>Edit Shift</h4>
                             </div>
                             <div class="modal-body">
+                                <style>
+                                    /* Block interaction on disabled extra break rows (including timepicker icons) */
+                                    #modal-edit-shift .extra-break-row.is-disabled {
+                                        pointer-events: none;
+                                        opacity: 0.6;
+                                    }
+                                </style>
                                 <form action="{{ url('settings/shift/edit') }}" method="post">
                                     @csrf
                                     <input type="text" id="edit-id-shift" name="shift_id" hidden>
@@ -137,7 +144,7 @@
                                     <div class="form-group">
                                         <label class="custom-switch p-0">
                                             <input type="checkbox" name="is_break" class="custom-switch-input active"
-                                                id="edit-is_break-shift" onclick="handleIsBreak()">
+                                                id="edit-is_break-shift">
                                             <span class="custom-switch-indicator"></span>
                                             <span class="custom-switch-description" data-toggle="tooltip"
                                                 data-placement="top"
@@ -145,6 +152,76 @@
                                                 Istirahat</span>
                                         </label>
                                     </div>
+
+                                    <div class="form-group" id="edit-extraBreakToggleWrapper" style="display:none;">
+                                        <label class="custom-switch p-0">
+                                            <input type="checkbox" name="is_break_extra" class="custom-switch-input"
+                                                id="edit-is_break_extra">
+                                            <span class="custom-switch-indicator"></span>
+                                            <span class="custom-switch-description" data-toggle="tooltip"
+                                                data-placement="top"
+                                                title="Aktifkan jika ada jam istirahat tambahan (kedua)">Jam Istirahat
+                                                Tambahan</span>
+                                        </label>
+                                    </div>
+
+                                    <div id="edit-extraBreakFields" style="display:none;">
+                                        <div id="edit-extraBreakContainer">
+                                            @php
+                                                $oldMulaiExtras = old('jam_mulai_istirahat_extra', []);
+                                                $oldSelesaiExtras = old('jam_selesai_istirahat_extra', []);
+                                                $rowCount = max(
+                                                    is_array($oldMulaiExtras) ? count($oldMulaiExtras) : 0,
+                                                    is_array($oldSelesaiExtras) ? count($oldSelesaiExtras) : 0,
+                                                );
+                                            @endphp
+                                            @for ($i = 0; $i < $rowCount; $i++)
+                                                <div class="form-row extra-break-row">
+                                                    <div class="form-group col-md-5">
+                                                        <label>Jam Mulai Istirahat Tambahan</label>
+                                                        <div class="input-group">
+                                                            <input type="text" class="form-control timepicker"
+                                                                name="jam_mulai_istirahat_extra[]"
+                                                                value="{{ old('jam_mulai_istirahat_extra.' . $i) }}">
+                                                            <div class="input-group-append"><span
+                                                                    class="input-group-text"><i
+                                                                        class="far fa-clock"></i></span></div>
+                                                        </div>
+                                                        @error('jam_mulai_istirahat_extra.' . $i)
+                                                            <div class="invalid-feedback d-block">{{ $message }}
+                                                            </div>
+                                                        @enderror
+                                                    </div>
+                                                    <div class="form-group col-md-5">
+                                                        <label>Jam Selesai Istirahat Tambahan</label>
+                                                        <div class="input-group">
+                                                            <input type="text" class="form-control timepicker"
+                                                                name="jam_selesai_istirahat_extra[]"
+                                                                value="{{ old('jam_selesai_istirahat_extra.' . $i) }}">
+                                                            <div class="input-group-append"><span
+                                                                    class="input-group-text"><i
+                                                                        class="far fa-clock"></i></span></div>
+                                                        </div>
+                                                        @error('jam_selesai_istirahat_extra.' . $i)
+                                                            <div class="invalid-feedback d-block">{{ $message }}
+                                                            </div>
+                                                        @enderror
+                                                    </div>
+                                                    <div class="form-group col-md-2 d-flex align-items-end">
+                                                        <button type="button"
+                                                            class="btn btn-outline-danger w-100 edit-remove-extra-break"><i
+                                                                class="fas fa-trash"></i></button>
+                                                    </div>
+                                                </div>
+                                            @endfor
+                                        </div>
+                                        <div class="form-group">
+                                            <button type="button" class="btn btn-outline-dark"
+                                                id="edit-addExtraBreakBtn"><i class="fas fa-plus"></i> Tambah
+                                                Istirahat Tambahan</button>
+                                        </div>
+                                    </div>
+
                                     <div class="form-group">
                                         <label for="edit-keterangan-shift">Keterangan</label>
                                         <textarea class="form-control @error('keterangan') is-invalid @enderror h-100" id="edit-keterangan-shift"
@@ -159,6 +236,124 @@
                                         <button type="submit" class="btn btn-dark float-right">Simpan</button>
                                     </div>
                                 </form>
+                                <script>
+                                    (function() {
+                                        function setDisabled(el, disabled) {
+                                            if (!el) return;
+                                            el.disabled = !!disabled;
+                                            el.readOnly = !!disabled;
+                                            if (disabled) {
+                                                el.classList.add('disabled');
+                                                try {
+                                                    el.blur && el.blur();
+                                                } catch (e) {}
+                                            } else {
+                                                el.classList.remove('disabled');
+                                            }
+                                        }
+
+                                        function initTimepicker(elem) {
+                                            try {
+                                                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.timepicker) {
+                                                    window.jQuery(elem).timepicker();
+                                                }
+                                            } catch (e) {}
+                                        }
+
+                                        function createRow(values) {
+                                            var container = document.getElementById('edit-extraBreakContainer');
+                                            if (!container) return null;
+                                            var row = document.createElement('div');
+                                            row.className = 'form-row extra-break-row';
+                                            row.innerHTML =
+                                                '<div class="form-group col-md-5">' +
+                                                '<label>Jam Mulai Istirahat Tambahan</label>' +
+                                                '<div class="input-group">' +
+                                                '<input type="text" class="form-control timepicker" name="jam_mulai_istirahat_extra[]" value="' + (
+                                                    values && values.mulai ? values.mulai : '') + '">' +
+                                                '<div class="input-group-append"><span class="input-group-text"><i class="far fa-clock"></i></span></div>' +
+                                                '</div>' +
+                                                '</div>' +
+                                                '<div class="form-group col-md-5">' +
+                                                '<label>Jam Selesai Istirahat Tambahan</label>' +
+                                                '<div class="input-group">' +
+                                                '<input type="text" class="form-control timepicker" name="jam_selesai_istirahat_extra[]" value="' +
+                                                (values && values.selesai ? values.selesai : '') + '">' +
+                                                '<div class="input-group-append"><span class="input-group-text"><i class="far fa-clock"></i></span></div>' +
+                                                '</div>' +
+                                                '</div>' +
+                                                '<div class="form-group col-md-2 d-flex align-items-end">' +
+                                                '<button type="button" class="btn btn-outline-danger w-100 edit-remove-extra-break"><i class="fas fa-trash"></i></button>' +
+                                                '</div>';
+                                            container.appendChild(row);
+                                            var removeBtn = row.querySelector('.edit-remove-extra-break');
+                                            if (removeBtn) {
+                                                removeBtn.addEventListener('click', function() {
+                                                    row.parentNode && row.parentNode.removeChild(row);
+                                                });
+                                            }
+                                            var tps = row.querySelectorAll('.timepicker');
+                                            tps.forEach(initTimepicker);
+                                            return row;
+                                        }
+
+                                        function handleEditIsBreak() {
+                                            var isBreak = document.getElementById('edit-is_break-shift');
+                                            var mulai = document.getElementById('edit-jam_mulai_istirahat-shift');
+                                            var selesai = document.getElementById('edit-jam_selesai_istirahat-shift');
+                                            var extraToggleWrapper = document.getElementById('edit-extraBreakToggleWrapper');
+                                            var isBreakExtra = document.getElementById('edit-is_break_extra');
+                                            var active = isBreak && isBreak.checked;
+                                            setDisabled(mulai, !active);
+                                            setDisabled(selesai, !active);
+                                            if (extraToggleWrapper) extraToggleWrapper.style.display = active ? '' : 'none';
+                                            if (!active && isBreakExtra) {
+                                                isBreakExtra.checked = false; // will hide via change listener
+                                            }
+                                            handleEditIsBreakExtra();
+                                        }
+
+                                        function handleEditIsBreakExtra() {
+                                            var isBreak = document.getElementById('edit-is_break-shift');
+                                            var isBreakExtra = document.getElementById('edit-is_break_extra');
+                                            var extraFields = document.getElementById('edit-extraBreakFields');
+                                            var addBtn = document.getElementById('edit-addExtraBreakBtn');
+                                            var active = (isBreak && isBreak.checked) && (isBreakExtra && isBreakExtra.checked);
+                                            if (extraFields) extraFields.style.display = active ? '' : 'none';
+                                            if (addBtn) addBtn.disabled = !active;
+                                        }
+
+                                        function initEditExtraBreakUI() {
+                                            var addBtn = document.getElementById('edit-addExtraBreakBtn');
+                                            if (addBtn && !addBtn._bound) {
+                                                addBtn.addEventListener('click', function() {
+                                                    createRow();
+                                                });
+                                                addBtn._bound = true;
+                                            }
+                                            var isBreakCb = document.getElementById('edit-is_break-shift');
+                                            var isBreakExtraCb = document.getElementById('edit-is_break_extra');
+                                            if (isBreakCb && !isBreakCb._bound) {
+                                                isBreakCb.addEventListener('change', handleEditIsBreak);
+                                                isBreakCb._bound = true;
+                                            }
+                                            if (isBreakExtraCb && !isBreakExtraCb._bound) {
+                                                isBreakExtraCb.addEventListener('change', handleEditIsBreakExtra);
+                                                isBreakExtraCb._bound = true;
+                                            }
+                                            handleEditIsBreak();
+                                        }
+
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            initEditExtraBreakUI();
+                                            if (window.jQuery) {
+                                                window.jQuery('#modal-edit-shift').on('shown.bs.modal', function() {
+                                                    initEditExtraBreakUI();
+                                                });
+                                            }
+                                        });
+                                    })();
+                                </script>
                             </div>
                         </div>
                     </div>

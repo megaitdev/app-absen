@@ -111,8 +111,24 @@ class GenerateReportController extends Controller
 
     function getJamLemburTerusan($scan_out, $shift)
     {
+        // dd($shift, $scan_out);
+        $murni = (int)Carbon::parse($shift->jam_keluar)->diffInMinutes($scan_out) - $shift->jeda_lembur_terusan;
+        $date = Carbon::parse($scan_out)->format('Y-m-d');
+        if ($shift->is_break_extra) {
+            foreach ($shift->istirahat as $istirahat) {
+                $istirahat_start = Carbon::parse($date . ' ' . $istirahat['mulai']);
+                $istirahat_end = Carbon::parse($date . ' ' . $istirahat['selesai']);
+                if (Carbon::parse($scan_out)->gt($istirahat_start)) {
+                    // dump($istirahat_start);
+                    if (Carbon::parse($scan_out)->lt($istirahat_end)) {
+                        $murni -= Carbon::parse($scan_out)->diffInMinutes($istirahat_end);
+                    } else {
+                        $murni -= $istirahat['total_menit'];
+                    }
+                }
+            }
+        }
 
-        $murni = (int)Carbon::parse($shift->jam_keluar)->diffInMinutes($scan_out) - 15;
         $efektif = 0;
         if ($murni >= 60) {
             $efektif = $murni - ($murni % 30);
@@ -194,11 +210,12 @@ class GenerateReportController extends Controller
         $closest_scan_in = $scan_logs->map(function ($attendance) use ($scan_in, $shift) {
             $scan_time = Carbon::parse($attendance->scan_date);
             $difference = abs($scan_time->diffInMinutes($scan_in, false));
-            return $difference > $shift->total_menit_kerja ? null : [
+            return $difference >= ($shift->total_menit_kerja + $shift->total_menit_istirahat) ? null : [
                 'scan_date' => $attendance->scan_date,
                 'difference' => $difference
             ];
         })->filter()->sortBy('difference')->first();
+
 
         $closest_scan_out_before = $scan_logs->filter(function ($attendance) use ($scan_out, $shift) {
             $scan_time = Carbon::parse($attendance->scan_date);
@@ -212,16 +229,16 @@ class GenerateReportController extends Controller
             ];
         })->filter()->sortBy('difference')->first();
 
-        $farthest_scan_out_after = $scan_logs->filter(function ($attendance) use ($scan_out) {
+        $closest_scan_out_after = $scan_logs->filter(function ($attendance) use ($scan_out) {
             $scan_time = Carbon::parse($attendance->scan_date);
             return $scan_time->gt($scan_out);
         })->map(function ($attendance) use ($scan_out) {
             $scan_time = Carbon::parse($attendance->scan_date);
             return [
                 'scan_date' => $attendance->scan_date,
-                'difference' => $scan_out->diffInMinutes($scan_time, true)
+                'difference' => $scan_time->diffInMinutes($scan_out, true)
             ];
-        })->sortByDesc('difference')->first();
+        })->filter()->sortBy('difference')->first();
 
 
         if ($closest_scan_in) {
@@ -231,8 +248,8 @@ class GenerateReportController extends Controller
         if ($closest_scan_out_before) {
             $result['out'] = $closest_scan_out_before['scan_date'];
         }
-        if ($farthest_scan_out_after) {
-            $result['out'] = $farthest_scan_out_after['scan_date'];
+        if ($closest_scan_out_after) {
+            $result['out'] = $closest_scan_out_after['scan_date'];
         }
         if ($scan_logs->where('jenis', 'scan_masuk')->first()) {
             $result['in'] = $scan_logs->where('jenis', 'scan_masuk')->first()->scan_date;
