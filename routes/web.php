@@ -18,6 +18,7 @@ use App\Http\Controllers\Settings\ScheduleController;
 use App\Http\Controllers\Settings\SettingController;
 use App\Http\Controllers\Settings\ShiftController;
 use App\Http\Controllers\Perizinan\PerizinanController;
+use App\Http\Controllers\Pic\PicDashboardController;
 use Illuminate\Support\Facades\Route;
 
 

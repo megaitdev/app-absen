@@ -19,6 +19,7 @@ class ScriptController extends Controller
                     "library/jspdf/jspdf.umd.min.js",
                     "library/select2/dist/js/select2.min.js",
                     "js/report/{$page}.js",
+                ];
             case "dashboard-pic":
                 return [
                     // Put path script below here
