@@ -42,7 +42,7 @@ class PicController extends Controller
             $pic->password = bcrypt($request->password);
         }
         $pic->pic = $request->pic;
-        $pic->employees = $request->selected_employee_ids;
+        $pic->employees = json_decode($request->selected_employee_ids);
         $pic->save();
         return redirect(url('/settings'))->with('updated-pic', 'PIC update successfully.');
         return response()->json(['success' => 'PIC updated successfully.', 'data' => $request->all()]);
@@ -54,7 +54,7 @@ class PicController extends Controller
         $allEmployees = Employee::where('is_deleted', 0)->orderBy('nama', 'asc')->get();
         $units = Unit::where('status', 1)->orderBy('unit', 'asc')->get();
 
-        $selectedEmployeeIds = json_decode($pic->employees);
+        $selectedEmployeeIds = $pic->employees;
         if ($pic) {
             return response()->json([
                 'pic' => $pic,
@@ -69,8 +69,7 @@ class PicController extends Controller
 
     function delete($pic_id)
     {
-        $pic = User::find($pic_id);
-        $pic->delete();
+        User::where('id', $pic_id)->update(['is_active' => 0]);
         return response()->json(['success' => 'PIC deleted successfully.']);
     }
 
@@ -109,7 +108,7 @@ class PicController extends Controller
                 'password' => bcrypt($request->password),
                 'pic' => $request->pic,
                 'role' => 'pic',
-                'employees' => $request->selected_employee_ids ?? null,
+                'employees' => json_decode($request->selected_employee_ids) ?? null,
             ]);
             return redirect('/settings')->with('success-pic', 'PIC created successfully.');
         } else {
@@ -120,7 +119,7 @@ class PicController extends Controller
     function showPic($id)
     {
         $pic = User::find($id);
-        $employeeIds = json_decode($pic->employees);
+        $employeeIds = $pic->employees;
 
         $employees = [];
         if (!empty($employeeIds)) {
@@ -196,7 +195,7 @@ class PicController extends Controller
 
     function datatablePic(Request $request)
     {
-        $query = User::where('role', 'pic');
+        $query = User::where([['role', 'pic'], ['is_active', 1]]);
         $order = $request->input('order.0.name', '');
         $orderDir = $request->input('order.0.dir', '');
         if ($order == 'mengelola') {
@@ -207,7 +206,7 @@ class PicController extends Controller
         )
             ->addIndexColumn()
             ->addColumn('mengelola', function ($row) {
-                return '<div class="btn btn-sm btn-info" onclick="javascript:showEmployees(' . $row->id . ')">' . count(json_decode($row->employees)) . ' Karyawan</div>';
+                return '<div class="btn btn-sm btn-info" onclick="javascript:showEmployees(' . $row->id . ')">' . count($row->employees) . ' Karyawan</div>';
             })
             ->addColumn('action', function ($row) {
                 $action = '<div onclick="javascript:deletePic(' . $row->id . ')" class="btn btn-sm btn-outline-danger m-1"><i class="far fa-trash-alt"></i></div>';

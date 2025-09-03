@@ -236,10 +236,10 @@
                                     <!-- Summary Footer -->
                                     <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
                                         <span id="periode-summary" class="text-muted">Periode: Januari 2025</span>
-                                        <div class="text-end">
+                                        {{-- <div class="text-end">
                                             <p class="text-muted mb-1">Total Penerimaan Bersih:</p>
                                             <p class="fw-bold text-primary h5 mb-0">Rp -</p>
-                                        </div>
+                                        </div> --}}
                                     </div>
                                 </div>
                             </div>

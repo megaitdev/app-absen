@@ -11,12 +11,18 @@ class Shift extends Model
     use HasFactory;
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'is_break' => 'boolean',
+        'is_break_extra' => 'boolean',
+        'is_sameday' => 'boolean',
+        'is_active' => 'boolean',
+        'istirahat' => 'array'
+    ];
+
     public function addDateToTimeFields(?string $date = null): object
     {
         // If no date is provided, use current date
-        if ($date === null) {
-            $date = Carbon::now();
-        }
+        $date = $date === null ? Carbon::now() : Carbon::parse($date);
 
         // Get current shift data as array
         $shiftData = $this->toArray();
@@ -31,9 +37,10 @@ class Shift extends Model
         ];
 
         foreach ($timeFields as $field) {
-            if (isset($shiftData[$field]) && !empty($shiftData[$field])) {
-                // Convert time string to datetime by adding date
-                $shiftData[$field] = $date . ' ' . $shiftData[$field];
+            if (!empty($shiftData[$field])) {
+                $isNextDay = in_array($field, ['jam_keluar']) && $this->is_sameday == 0;
+                $currentDate = $isNextDay ? $date->copy()->addDay() : $date->copy();
+                $shiftData[$field] = $currentDate->format('Y-m-d') . ' ' . $shiftData[$field];
             }
         }
 

@@ -38,7 +38,15 @@ class ShiftController extends Controller
     {
 
         $shift = Shift::find($request->shift_id);
-        $dataShift = $request->except(['_token', 'is_sameday', 'shift_id', 'is_break']);
+        $dataShift = $request->except([
+            '_token',
+            'is_sameday',
+            'shift_id',
+            'is_break',
+            'is_break_extra',
+            'jam_mulai_istirahat_extra',
+            'jam_selesai_istirahat_extra',
+        ]);
 
         if ($shift->name == $request->name) {
             $request->validate([
@@ -54,6 +62,7 @@ class ShiftController extends Controller
             ]);
         }
 
+        $startDate = $endDate = Carbon::now()->format('Y-m-d');
         if ($request->is_sameday) {
             $dataShift['is_sameday'] = 1;
             $request->validate([
@@ -65,6 +74,7 @@ class ShiftController extends Controller
             ]);
         } else {
             $dataShift['is_sameday'] = 0;
+            $endDate = Carbon::now()->addDay()->format('Y-m-d');
             $request->validate([
                 'jam_keluar' => function ($attribute, $value, $fail) use ($request) {
                     if (strtotime($value) >= strtotime($request->jam_masuk)) {
@@ -75,29 +85,65 @@ class ShiftController extends Controller
         }
 
         $totalIstirahatMenit = 0;
+        $dataShift['istirahat'] = null;
+        $dataShift['is_break_extra'] = 0;
         if ($request->is_break) {
             $dataShift['is_break'] = 1;
-            if ($request->jam_mulai_istirahat || $request->jam_selesai_istirahat) {
-                $request->validate([
-                    'jam_mulai_istirahat' => 'after:jam_masuk|before:jam_keluar',
-                    'jam_selesai_istirahat' => 'required|after:jam_mulai_istirahat|before:jam_keluar',
-                ]);
-            }
-
             if ($request->jam_mulai_istirahat && $request->jam_selesai_istirahat) {
                 $startIstirahat = strtotime($request->jam_mulai_istirahat);
                 $endIstirahat = strtotime($request->jam_selesai_istirahat);
-                $totalIstirahatMenit = ceil(abs($endIstirahat - $startIstirahat) / 60);
+                $totalIstirahatMenit += ceil(abs($endIstirahat - $startIstirahat) / 60);
+            }
+
+            // Extra breaks similar to store()
+            if ($request->is_break_extra) {
+                $dataShift['is_break_extra'] = 1;
+                $mulais = $request->input('jam_mulai_istirahat_extra', []);
+                $selesais = $request->input('jam_selesai_istirahat_extra', []);
+                $count = max(is_array($mulais) ? count($mulais) : 0, is_array($selesais) ? count($selesais) : 0);
+                $istirahatList = [];
+
+                for ($i = 0; $i < $count; $i++) {
+                    $mulaiVal = trim((string)($mulais[$i] ?? ''));
+                    $selesaiVal = trim((string)($selesais[$i] ?? ''));
+
+                    if ($mulaiVal === '' && $selesaiVal === '') {
+                        continue; // skip empty rows
+                    }
+                    if ($mulaiVal === '' || $selesaiVal === '') {
+                        return back()->withErrors(['jam_mulai_istirahat_extra.' . $i => 'Jam mulai/selesai istirahat tambahan harus diisi berpasangan'])->withInput();
+                    }
+
+                    $startTs = strtotime($mulaiVal);
+                    $endTs = strtotime($selesaiVal);
+
+                    if ($endTs <= $startTs) {
+                        return back()->withErrors(['jam_selesai_istirahat_extra.' . $i => 'Jam selesai istirahat tambahan harus lebih besar dari jam mulai'])->withInput();
+                    }
+
+                    $durMenit = ceil(abs($endTs - $startTs) / 60);
+                    $istirahatList[] = [
+                        'mulai' => $mulaiVal,
+                        'selesai' => $selesaiVal,
+                        'total_menit' => $durMenit,
+                    ];
+                }
+
+                if (!empty($istirahatList)) {
+                    $dataShift['istirahat'] = $istirahatList;
+                }
             }
         } else {
             $dataShift['is_break'] = 0;
+            $dataShift['is_break_extra'] = 0;
             $dataShift['jam_mulai_istirahat'] = null;
             $dataShift['jam_selesai_istirahat'] = null;
         }
 
-        $start = strtotime($request->jam_masuk);
-        $end = strtotime($request->jam_keluar);
+        $start = strtotime($startDate . ' ' . $request->jam_masuk);
+        $end = strtotime($endDate . ' ' . $request->jam_keluar);
         $totalMenit = ceil(abs($end - $start) / 60);
+
 
         $totalJamKerjaMenit = $totalMenit - $totalIstirahatMenit;
 
@@ -127,6 +173,7 @@ class ShiftController extends Controller
     {
         return DataTables()->of(
             Shift::query()->where('id', '>', 5)
+                ->orderBy('created_at', 'desc')
         )
             ->addIndexColumn()
             ->addColumn('action', function ($row) {
@@ -151,13 +198,24 @@ class ShiftController extends Controller
 
     public function store(Request $request)
     {
-        $dataShift = $request->except(['_token', 'is_sameday', 'is_break']);
+
+        $dataShift = $request->except([
+            '_token',
+            'is_sameday',
+            'is_break',
+            'is_break_extra',
+            'jam_mulai_istirahat_extra',
+            'jam_selesai_istirahat_extra',
+        ]);
+
+        $startDate = $endDate = Carbon::now()->format('Y-m-d');
 
         $request->validate([
             'name' => 'required|unique:shifts',
             'jam_masuk' => 'required',
             'jam_keluar' => 'required',
         ]);
+
 
         if ($request->is_sameday) {
             $dataShift['is_sameday'] = 1;
@@ -169,6 +227,7 @@ class ShiftController extends Controller
                 },
             ]);
         } else {
+            $endDate = Carbon::now()->addDay()->format('Y-m-d');
             $request->validate([
                 'jam_keluar' => function ($attribute, $value, $fail) use ($request) {
                     if (strtotime($value) >= strtotime($request->jam_masuk)) {
@@ -181,13 +240,6 @@ class ShiftController extends Controller
         $totalIstirahatMenit = 0;
         if ($request->is_break) {
             $dataShift['is_break'] = 1;
-            if ($request->jam_mulai_istirahat || $request->jam_selesai_istirahat) {
-                $request->validate([
-                    'jam_mulai_istirahat' => 'after:jam_masuk|before:jam_keluar',
-                    'jam_selesai_istirahat' => 'required|after:jam_mulai_istirahat|before:jam_keluar',
-                ]);
-            }
-
             if ($request->jam_mulai_istirahat && $request->jam_selesai_istirahat) {
                 $startIstirahat = strtotime($request->jam_mulai_istirahat);
                 $endIstirahat = strtotime($request->jam_selesai_istirahat);
@@ -195,9 +247,51 @@ class ShiftController extends Controller
             }
         }
 
-        $start = strtotime($request->jam_masuk);
-        $end = strtotime($request->jam_keluar);
+        // Process multiple extra breaks and store as structured array in istirahat
+        $dataShift['istirahat'] = null;
+        if ($request->is_break && $request->is_break_extra) {
+            $dataShift['is_break_extra'] = 1;
+            $mulais = $request->input('jam_mulai_istirahat_extra', []);
+            $selesais = $request->input('jam_selesai_istirahat_extra', []);
+            $count = max(is_array($mulais) ? count($mulais) : 0, is_array($selesais) ? count($selesais) : 0);
+            $istirahatList = [];
+
+            for ($i = 0; $i < $count; $i++) {
+                $mulaiVal = trim((string)($mulais[$i] ?? ''));
+                $selesaiVal = trim((string)($selesais[$i] ?? ''));
+
+                if ($mulaiVal === '' && $selesaiVal === '') {
+                    continue; // skip empty rows
+                }
+                if ($mulaiVal === '' || $selesaiVal === '') {
+                    return back()->withErrors(['jam_mulai_istirahat_extra.' . $i => 'Jam mulai/selesai istirahat tambahan harus diisi berpasangan'])->withInput();
+                }
+
+                $startTs = strtotime($startDate . ' ' . $mulaiVal);
+                $endTs = strtotime($endDate . ' ' . $selesaiVal);
+
+                if ($endTs <= $startTs) {
+                    return back()->withErrors(['jam_selesai_istirahat_extra.' . $i => 'Jam selesai istirahat tambahan harus lebih besar dari jam mulai'])->withInput();
+                }
+
+                $durMenit = ceil(abs($endTs - $startTs) / 60);
+                $istirahatList[] = [
+                    'mulai' => $mulaiVal,
+                    'selesai' => $selesaiVal,
+                    'total_menit' => $durMenit,
+                ];
+            }
+
+            if (!empty($istirahatList)) {
+                $dataShift['istirahat'] = $istirahatList;
+            }
+        }
+
+
+        $start = strtotime($startDate . ' ' . $request->jam_masuk);
+        $end = strtotime($endDate . ' ' . $request->jam_keluar);
         $totalMenit = ceil(abs($end - $start) / 60);
+
 
         $totalJamKerjaMenit = $totalMenit - $totalIstirahatMenit;
 
@@ -213,6 +307,7 @@ class ShiftController extends Controller
         $dataShift['total_jam_istirahat'] = $this->menitToEfektifJam($totalIstirahatMenit);
         $dataShift['total_menit_istirahat'] = $totalIstirahatMenit;
 
+        // dd($dataShift);
         Shift::create($dataShift);
         return redirect('/settings')->with('success-shift', 'Shift created successfully.');
     }

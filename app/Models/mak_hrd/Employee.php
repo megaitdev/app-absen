@@ -52,6 +52,11 @@ class Employee extends Model
         )->where('hrd_posisis.status', 1);
     }
 
+    public function jabatan()
+    {
+        return $this->hasOne(Jabatan::class, 'id', 'jabatan_id');
+    }
+
     public function pangkat()
     {
         return $this->hasOne(Pangkat::class, 'id', 'pangkat_id');
@@ -89,7 +94,7 @@ class Employee extends Model
         return $this->hasMany(DasarJadwal::class, 'employee_id')->count();
     }
 
-    public function shifts($startDate, $endDate,)
+    public function shifts($startDate, $endDate)
     {
 
 
@@ -156,7 +161,7 @@ class Employee extends Model
             // For each date, find matching schedule
             foreach ($dasarJadwal as $dJ) {
                 // Check if current date falls within the dasarJadwal period
-                if ($currentDate->gte($dJ->start_date) && $currentDate->lte($dJ->end_date ?? Carbon::now())) {
+                if ($currentDate->gte($dJ->start_date) && $currentDate->lte($dJ->end_date ?? $endDate)) {
                     // Get the day of week (0=Sunday, 1=Monday, etc.)
                     $dayOfWeek = $currentDate->dayOfWeek;
 
@@ -187,6 +192,7 @@ class Employee extends Model
                 }
             }
         }
+
 
         return $result;
     }

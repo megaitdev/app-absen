@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Employee\EmployeeController;
 use App\Http\Controllers\LampiranController;
-use App\Http\Controllers\Pic\PicDashboardController;
 use App\Http\Controllers\Settings\HolidayController;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Http\Controllers\Profile\VerifikasiController;
@@ -18,8 +17,8 @@ use App\Http\Controllers\Settings\PicController;
 use App\Http\Controllers\Settings\ScheduleController;
 use App\Http\Controllers\Settings\SettingController;
 use App\Http\Controllers\Settings\ShiftController;
+use App\Http\Controllers\Perizinan\PerizinanController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 
 
 
@@ -139,11 +138,32 @@ Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Menu Perizinan
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/perizinan', [PerizinanController::class, 'index'])->name('perizinan.index');
+    Route::get('/perizinan/cuti', [PerizinanController::class, 'cuti'])->name('perizinan.cuti');
+    Route::post('/perizinan/cuti/store', [PerizinanController::class, 'storeCuti'])->name('perizinan.cuti.store');
+    Route::get('/perizinan/ajax/employee-info', [PerizinanController::class, 'getEmployeeInfo']);
+    Route::get('/perizinan/ajax/search-employee', [PerizinanController::class, 'searchEmployee'])->name('perizinan.ajax.search-employee');
+    Route::get('/perizinan/izin', [PerizinanController::class, 'izin'])->name('perizinan.izin');
+    Route::post('/perizinan/izin/store', [PerizinanController::class, 'storeIzin'])->name('perizinan.izin.store');
+    Route::get('/perizinan/verifikasi-absen', [PerizinanController::class, 'verifikasiAbsen'])->name('perizinan.verifikasi-absen');
+    Route::post('/perizinan/verifikasi-absen/store', [PerizinanController::class, 'storeVerifikasiAbsen'])->name('perizinan.verifikasi-absen.store');
+    Route::get('/perizinan/lembur', [PerizinanController::class, 'lembur'])->name('perizinan.lembur');
+    Route::post('/perizinan/lembur/store', [PerizinanController::class, 'storeLembur'])->name('perizinan.lembur.store');
+    Route::get('/perizinan/lembur/{lembur}/show', [PerizinanController::class, 'showLembur'])->name('perizinan.lembur.show');
+    Route::get('/perizinan/lembur/my-requests', [PerizinanController::class, 'myLemburRequests'])->name('perizinan.lembur.my-requests');
+
+    /*
+    |--------------------------------------------------------------------------
     | Menu Report
     |--------------------------------------------------------------------------
     */
 
     Route::get('/report', [ReportController::class, 'report']);
+    Route::get('/report/print-report', [ReportController::class, 'printReport']);
     Route::get('/report/tab/{tab}', [ReportController::class, 'setTabActive']);
     Route::get('/report/ajax/get-periode', [Controller::class, 'getPeriodeReport']);
     Route::post('/report/ajax/set-periode', [Controller::class, 'setPeriodeReport']);
@@ -159,6 +179,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/report/ajax/datatable/list-unit', [ReportController::class, 'datatableListUnit']);
     Route::get('/report/ajax/datatable/list-employee', [ReportController::class, 'dataTableListEmployee']);
+
+    Route::get('/report/ajax/list-units/{pic_id}', [ReportController::class, 'listUnitManagedPic']);
+    Route::get('/report/ajax/list-employees/{pic_id}', [ReportController::class, 'listEmployeesManagedPic']);
 
 
     Route::get('/report/employee/{employee:id}', [ReportController::class, 'reportEmployee']);
@@ -177,6 +200,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/v1/report/print/employee/{employee:id}', [ApiReportController::class, 'printEmployeeReport']);
     Route::get('/api/v1/report/print/unit/{unit:id}', [ApiReportController::class, 'printUnitReport']);
     Route::get('/api/v1/report/print/pic/{picID}', [ApiReportController::class, 'printPICReport']);
+    Route::get('/api/v1/report/pic/{picID}/employees', [ApiReportController::class, 'listPicEmployees']);
 
     Route::get('/api/v1/report/get-verifikasi/{verifikasi:id}', [ApiReportController::class, 'getVerifikasi']);
     Route::get('/api/v1/report/delete-verifikasi/{verifikasi:id}', [ApiReportController::class, 'deleteVerifikasi']);
@@ -198,6 +222,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/api/v1/report/get-attlog/{date}/{employee:id}', [ApiReportController::class, 'getAttlog']);
     Route::get('/api/v1/report/get-absen-stats/{employee:id}', [ApiReportController::class, 'getAttendanceStats']);
+    Route::get('/api/v1/report/get-report-stats/{employee:id}', [ApiReportController::class, 'getAttendanceStatsReport']);
+    Route::get('/api/v1/report/get-report-pic/{pic_id}', [ApiReportController::class, 'getReportPic']);
 
     Route::get('/api/v1/report/datatable/report-pic', [ApiReportController::class, 'datatableReportPic']);
     Route::get('/api/v1/report/generate/report-pic/{pic_id}', [ApiReportController::class, 'asyncGenerateReportEmployeesPic']);
@@ -224,6 +250,38 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/lampiran/{kategori}/{lampiran}', [LampiranController::class, 'showDokumen']);
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Workflow Approval
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('workflow')->middleware([\App\Http\Middleware\WorkflowApprovalAccess::class])->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Workflow\WorkflowController::class, 'dashboard'])->name('workflow.dashboard');
+        Route::get('/pending-approvals', [\App\Http\Controllers\Workflow\WorkflowController::class, 'pendingApprovals']);
+        Route::post('/approve-supervisor', [\App\Http\Controllers\Workflow\WorkflowController::class, 'approveBySupervisor']);
+        Route::post('/approve-hrd', [\App\Http\Controllers\Workflow\WorkflowController::class, 'approveByHrd']);
+        Route::post('/reject', [\App\Http\Controllers\Workflow\WorkflowController::class, 'reject']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Approval Levels Management
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('settings/approval-levels')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'index'])->name('approval-levels.index');
+        Route::get('/datatable', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'datatable']);
+        Route::post('/store', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'store']);
+        Route::get('/{id}', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'show']);
+        Route::put('/{id}', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'destroy']);
+        Route::get('/data/supervisors', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'getSupervisors']);
+        Route::get('/data/units', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'getUnits']);
+        Route::get('/data/divisis', [\App\Http\Controllers\Settings\ApprovalLevelController::class, 'getDivisis']);
+    });
 
     /*
     |--------------------------------------------------------------------------

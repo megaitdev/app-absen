@@ -22,6 +22,7 @@ use App\Models\JenisIzin;
 use App\Models\Lembur;
 use App\Models\Progress;
 use App\Models\Schedule;
+use App\Models\User;
 use App\Models\VerifikasiAbsen;
 use Carbon\CarbonPeriod;
 use DateInterval;
@@ -60,6 +61,20 @@ class ReportController extends Controller
             return view('report.pic.report', $data);
         }
     }
+    function printReport()
+    {
+        $data = [
+            'title' => 'Print Report',
+            'slug' => 'report',
+            'scripts' => $this->script->getListScript('print-report'),
+            'csses' => $this->css->getListCss('print-report'),
+            'periode' => $this->getPeriodeReport(),
+            'pic' => Auth::user()
+        ];
+
+
+        return view('report.print-report', $data);
+    }
 
     public function setTabActive($tab)
     {
@@ -93,7 +108,7 @@ class ReportController extends Controller
     {
         $report_tab = Session::get('report-tab-' . Auth::user()->id);
         if (!$report_tab) {
-            Session::put('report-tab-' . Auth::user()->id, 'unit');
+            Session::put('report-tab-' . Auth::user()->id, 'employee');
             $report_tab = Session::get('report-tab-' . Auth::user()->id);
         }
         return $report_tab;
@@ -344,8 +359,6 @@ class ReportController extends Controller
         }
         $startDate = $periode->start;
         $endDate = $periode->end;
-        // $startDate = '2025-01-24';
-        // $endDate = '2025-01-24';
 
         $employee = Employee::where('id', $employee_id)->first(['nama', 'pin', 'id', 'pangkat_id']);
         if (!$employee) {
@@ -353,9 +366,6 @@ class ReportController extends Controller
         }
 
         $employeePin = $employee->pin;
-
-        // $shifts = Schedule::where('is_default', 1)->first()->hasShifts($startDate, $endDate);
-
 
         $shifts = $employee->shifts($startDate, $endDate);
         $holidays = Holiday::whereBetween('date', [$startDate, $endDate])->pluck('date')->toArray();
@@ -408,9 +418,6 @@ class ReportController extends Controller
                 $scanLog->date = Carbon::parse($scanLog->scan_date)->format('Y-m-d');
                 return $scanLog;
             });
-
-
-
 
 
         $dataReport = [];
@@ -500,6 +507,7 @@ class ReportController extends Controller
                         $report['shift_id'] = $this->shiftLemburID();
                         $report['utl'] = 1;
                         $report['umll'] = $durasiLembur > 240 ? 1 : 0;
+                        $report['lembur_akumulasi'] = $this->getJamLemburAkumulasi($durasiLembur, 'Lembur Libur', $employee->pangkat_id);
                     }
                     $report['uk'] = 0;
                     $report['um'] = 0;
@@ -509,6 +517,11 @@ class ReportController extends Controller
                 }
             } else {
                 $report['shift_id'] = $shift->id;
+                if (!$shift->is_sameday) {
+                    $dateTomorow = (new Carbon($date))->addDay(1)->format('Y-m-d');
+                    $scanLogForDate = $scanLogForDate->concat($scanLogs->where('date', $dateTomorow));
+                }
+                // dd($scanLogForDate);
                 if ($scanLogForDate->isNotEmpty()) {
                     $check = $this->getCheckInCheckOut($scanLogForDate, $shift);
                     $report['status'] = 'Hadir';
@@ -516,6 +529,7 @@ class ReportController extends Controller
                     $report['scan_keluar_murni'] = $check->out;
                     $report['scan_masuk_efektif'] = $shift->jam_masuk;
                     $report['scan_keluar_efektif'] = $shift->jam_keluar;
+                    $report['ut'] = 1;
                     $jamHilangMurni = 0;
                     $jamHilangEfektif = 0;
 
@@ -575,15 +589,11 @@ class ReportController extends Controller
                             $report['jam_kerja_murni'] = floor(Carbon::parse($check->in)->diffInMinutes($check->out));
                         }
                     }
-
                     $report['jam_kerja_efektif'] = $shift->total_menit_kerja - $jamHilangEfektif;
 
                     if ($status->check_out == 'Tepat Waktu') {
                         $lembur = $this->getJamLemburTerusan($check->out, $shift);
                         $report['lembur_murni'] = $lembur->murni;
-                        if (Carbon::parse($check->out)->gt(Carbon::parse($date . ' 18:45'))) {
-                            $lembur->efektif -= 60;
-                        }
                         $report['lembur_efektif'] = $lembur->efektif;
                         $report['lembur_akumulasi'] = $this->getJamLemburAkumulasi($lembur->efektif, 'Terusan', $employee->pangkat_id);
                     }
@@ -592,6 +602,9 @@ class ReportController extends Controller
                     if ($employee->pangkat_id == 1 && $report['jam_kerja_efektif'] <= 240) {
                         $report['uk'] = 0;
                         $report['um'] = 0;
+                    } else {
+                        $report['uk'] = 1;
+                        $report['um'] = 1;
                     }
                 } else {
                     if ($employee->pangkat_id == 1) {
@@ -715,8 +728,24 @@ class ReportController extends Controller
 
     function getJamLemburTerusan($scan_out, $shift)
     {
+        // dd($shift, $scan_out);
+        $murni = (int)Carbon::parse($shift->jam_keluar)->diffInMinutes($scan_out) - $shift->jeda_lembur_terusan;
+        $date = Carbon::parse($scan_out)->format('Y-m-d');
+        if ($shift->is_break_extra) {
+            foreach ($shift->istirahat as $istirahat) {
+                $istirahat_start = Carbon::parse($date . ' ' . $istirahat['mulai']);
+                $istirahat_end = Carbon::parse($date . ' ' . $istirahat['selesai']);
+                if (Carbon::parse($scan_out)->gt($istirahat_start)) {
+                    // dump($istirahat_start);
+                    if (Carbon::parse($scan_out)->lt($istirahat_end)) {
+                        $murni -= Carbon::parse($scan_out)->diffInMinutes($istirahat_end);
+                    } else {
+                        $murni -= $istirahat['total_menit'];
+                    }
+                }
+            }
+        }
 
-        $murni = (int)Carbon::parse($shift->jam_keluar)->diffInMinutes($scan_out) - 15;
         $efektif = 0;
         if ($murni >= 60) {
             $efektif = $murni - ($murni % 30);
@@ -730,6 +759,9 @@ class ReportController extends Controller
     function getJamHilangTerlambat($scan_in, $shift)
     {
         $murni = (int)Carbon::parse($shift->jam_masuk)->diffInMinutes($scan_in);
+        if ($murni > $shift->total_menit_kerja) {
+            $murni -= $shift->total_menit_istirahat;
+        }
         $efektif = $murni - ($murni % 15) + (($murni % 15) > 0 ? 15 : 0);
         return (object) compact('murni', 'efektif');
     }
@@ -800,11 +832,12 @@ class ReportController extends Controller
         $closest_scan_in = $scan_logs->map(function ($attendance) use ($scan_in, $shift) {
             $scan_time = Carbon::parse($attendance->scan_date);
             $difference = abs($scan_time->diffInMinutes($scan_in, false));
-            return $difference > $shift->total_menit_kerja ? null : [
+            return $difference >= ($shift->total_menit_kerja + $shift->total_menit_istirahat) ? null : [
                 'scan_date' => $attendance->scan_date,
                 'difference' => $difference
             ];
         })->filter()->sortBy('difference')->first();
+
 
         $closest_scan_out_before = $scan_logs->filter(function ($attendance) use ($scan_out, $shift) {
             $scan_time = Carbon::parse($attendance->scan_date);
@@ -818,16 +851,16 @@ class ReportController extends Controller
             ];
         })->filter()->sortBy('difference')->first();
 
-        $farthest_scan_out_after = $scan_logs->filter(function ($attendance) use ($scan_out) {
+        $closest_scan_out_after = $scan_logs->filter(function ($attendance) use ($scan_out) {
             $scan_time = Carbon::parse($attendance->scan_date);
             return $scan_time->gt($scan_out);
         })->map(function ($attendance) use ($scan_out) {
             $scan_time = Carbon::parse($attendance->scan_date);
             return [
                 'scan_date' => $attendance->scan_date,
-                'difference' => $scan_out->diffInMinutes($scan_time, true)
+                'difference' => $scan_time->diffInMinutes($scan_out, true)
             ];
-        })->sortByDesc('difference')->first();
+        })->filter()->sortBy('difference')->first();
 
 
         if ($closest_scan_in) {
@@ -837,8 +870,8 @@ class ReportController extends Controller
         if ($closest_scan_out_before) {
             $result['out'] = $closest_scan_out_before['scan_date'];
         }
-        if ($farthest_scan_out_after) {
-            $result['out'] = $farthest_scan_out_after['scan_date'];
+        if ($closest_scan_out_after) {
+            $result['out'] = $closest_scan_out_after['scan_date'];
         }
         if ($scan_logs->where('jenis', 'scan_masuk')->first()) {
             $result['in'] = $scan_logs->where('jenis', 'scan_masuk')->first()->scan_date;
@@ -1041,6 +1074,7 @@ class ReportController extends Controller
             ->keyBy('date');
 
 
+        // dd($reports);
         $dataReport = [];
         foreach (CarbonPeriod::create($periode->start, $periode->end) as $date) {
             $date = $date->format('Y-m-d');
@@ -1118,5 +1152,21 @@ class ReportController extends Controller
             ->addIndexColumn()
             ->rawColumns(['perizinan'])
             ->make(true);
+    }
+
+    public function listUnitManagedPic($picID)
+    {
+        $pic = User::find($picID);
+        return response()->json(
+            $pic->getManagedUnits()
+        );
+    }
+
+    public function listEmployeesManagedPic($picID)
+    {
+        $pic = User::find($picID);
+        return response()->json(
+            $pic->managedEmployees()
+        );
     }
 }

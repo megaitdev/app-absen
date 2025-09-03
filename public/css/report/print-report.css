@@ -1,0 +1,218 @@
+.report-print.report-container,
+.report-print .report-container {
+  background-color: white;
+  padding: 30px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.report-print .header {
+  text-align: center;
+}
+.report-print .header h1 {
+  font-size: 26px;
+  font-weight: 900;
+  font-family: "Arial Black", Arial, sans-serif;
+  color: #333;
+}
+.report-print .header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: "Arial Black", Arial, sans-serif;
+  color: #666;
+}
+.report-print .info-section {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.report-print .info-left,
+.report-print .info-right {
+  font-size: 16px;
+}
+.report-print .info-left p {
+  margin: 2px 0;
+  text-align: left;
+}
+.report-print .info-right p {
+  margin: 2px 0;
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  /* gunakan gap antar kolom */
+}
+.report-print .info-label {
+  font-weight: bold;
+  display: inline-block;
+  width: 80px;
+  /* Lebar untuk label kiri */
+}
+.report-print .info-label-right {
+  font-weight: bold;
+  display: inline-block;
+  text-align: left;
+  /* label kini rata kiri agar sejajar vertikal */
+  width: 100px;
+  /* Lebar untuk label kanan */
+}
+.report-print .info-value-right {
+  display: inline-block;
+  text-align: left;
+  /* nilai tetap rata kiri */
+  padding-left: 0;
+}
+.report-print table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+  font-family: "Cascadia Mono", "Cascadia Code", monospace !important;
+}
+.report-print th,
+.report-print td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+.report-print th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+/* Override: tebal 2px untuk tabel laporan */
+.report-print .report-table {
+  border: 1px solid #444 !important;
+}
+.report-print .report-table th,
+.report-print .report-table td {
+  border: 1px solid #444 !important;
+}
+.report-print .report-table thead th {
+  background-color: #e7e7e7 !important;
+  /* abu-abu muda */
+}
+
+/* NIK & NAMA rata kiri */
+.report-print .report-table td.nik,
+.report-print .report-table td.nama {
+  text-align: left !important;
+}
+
+/* Fix artefak garis di html2canvas untuk header dengan rowspan */
+.report-print .report-table thead tr:nth-child(2) th {
+  /* baris kedua header */
+  border-top: none !important;
+  /* hilangkan border yang menabrak sel rowspan */
+}
+.report-print .report-table thead th[rowspan] {
+  position: relative;
+}
+
+/* Hilangkan garis atas baris kedua dengan transparan tanpa menutup teks */
+.report-print .report-table thead tr:nth-child(2) th {
+  border-top: 1px solid transparent !important;
+}
+.report-print .table-header-group th {
+  text-align: center;
+  vertical-align: middle;
+}
+.report-print .table-header-group .col-title {
+  background-color: #e9ecef;
+}
+
+/* Tabel info header (dipisah kiri & kanan) */
+.report-print .info-tables {
+  display: flex;
+  justify-content: flex-start; /* allow right table to be pushed via auto margin */
+  gap: 24px; /* comfortable spacing between the two tables */
+  margin-bottom: 20px;
+}
+.report-print .info-table {
+  font-size: 16px;
+  border-collapse: collapse;
+  flex: 1 1 0; /* let both tables expand evenly */
+  width: auto; /* override intrinsic table width */
+}
+.report-print .info-table-right {
+  flex: 0 0 auto; /* keep natural width */
+  margin-left: auto; /* push to the far right */
+}
+.report-print .info-table td {
+  padding: 2px 6px;
+  vertical-align: middle;
+  border: none;
+  /* hilangkan border untuk info */
+  text-align: left;
+}
+.report-print .info-table td.label {
+  font-weight: bold;
+  width: 70px;
+  /* diperkecil dari 90px */
+  white-space: nowrap;
+}
+.report-print .info-table-right td.label {
+  width: 90px;
+  /* diperkecil dari 110px */
+}
+
+/* Ensure info tables use black text */
+.report-print .info-table,
+.report-print .info-table td,
+.report-print .info-table th {
+  color: #000 !important;
+}
+
+/* Compact spacing for the main report table */
+.report-print .report-table {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+}
+
+/* Body cells: maximize compactness */
+.report-print .report-table > tbody > tr > td,
+.report-print .report-table > tfoot > tr > td,
+.report-print .report-table td {
+  padding: 4px 10px !important; /* increased spacing */
+  line-height: 1.1 !important; /* still compact but airier */
+  vertical-align: middle !important;
+}
+
+/* Header cells: slightly more breathing room than body */
+.report-print .report-table > thead > tr > th,
+.report-print .report-table thead th {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  line-height: 1.1 !important;
+  vertical-align: middle !important;
+}
+
+/* Ensure table font color is black for print-like look */
+.report-print .report-table,
+.report-print .report-table th,
+.report-print .report-table td {
+  color: #000 !important;
+}
+
+/* Extra tightening to fight Bootstrap line-heights */
+/* Slightly taller rows for readability */
+.report-print .report-table tbody tr > td {
+  line-height: 1.7 !important;
+}
+.report-print .report-table thead tr > th {
+  line-height: 1.1 !important;
+}
+
+/* Minimal reset so table still has borders even without Bootstrap's .table */
+.report-print .report-table {
+  width: 100%;
+  margin-bottom: 4px; /* small spacing below */
+}
+
+/* Replacement for .table-responsive */
+.report-print .report-table-wrap {
+  width: 100%;
+  overflow-x: auto; /* scroll on small screens, harmless for print */
+}

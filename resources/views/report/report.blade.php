@@ -1,6 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Blank Page')
 
 @push('style')
     <!-- CSS Libraries -->
@@ -11,7 +10,7 @@
         <section class="section">
             <div class="section-header d-flex bd-highlight mb-3">
                 <h1>{{ $title }}</h1>
-                <button class="btn btn-primary ml-3" id="generate-report">Generate Report</button>
+                {{-- <button class="btn btn-primary ml-3" id="generate-report">Generate Report</button> --}}
                 <div class="btn btn-outline-dark ml-auto" id="filter-periode">
                     <i class="fas fa-calendar-alt mr-1"></i> {{ $periode->name }}
                 </div>
@@ -22,7 +21,7 @@
                 <div class="row">
                     <div class="col-lg-12 mb-3">
                         <ul class="nav nav-pills" role="tablist">
-                            <li class="nav-item">
+                            {{-- <li class="nav-item">
                                 <a class="nav-link nav-link-dark {{ $report_tab == 'scan-log' ? 'active' : '' }}"
                                     id="scan-log-tab" data-toggle="tab" href="#scan-log">
                                     Scan Log
@@ -33,7 +32,7 @@
                                     data-toggle="tab" href="#unit">
                                     Report Unit
                                 </a>
-                            </li>
+                            </li> --}}
                             <li class="nav-item">
                                 <a class="nav-link nav-link-dark {{ $report_tab == 'employee' ? 'active' : '' }}"
                                     id="employee-tab" data-toggle="tab" href="#employee">

@@ -8,8 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 class Cuti extends Model
 {
     use HasFactory;
+
     protected $connection = 'mysql';
     protected $guarded = ['id'];
+
+    protected $casts = [
+        'submitted_at' => 'datetime',
+        'approved_supervisor_at' => 'datetime',
+        'approved_hrd_at' => 'datetime',
+    ];
 
     public function pic()
     {

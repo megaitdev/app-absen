@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Channels\WhatsAppChannel;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,5 +40,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Pastikan timestamps disimpan dalam timezone lokal
         DB::statement("SET time_zone = '+07:00'");
+
+        // Register custom WhatsApp notification channel
+        Notification::extend('whatsapp', function ($app) {
+            return new WhatsAppChannel();
+        });
     }
 }

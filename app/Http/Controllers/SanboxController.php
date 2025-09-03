@@ -16,9 +16,9 @@ use App\Models\Schedule;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class SanboxController extends Controller
 {
@@ -30,7 +30,43 @@ class SanboxController extends Controller
         $this->css = $css;
     }
 
+
     function sandbox()
+    {
+
+        $pic = User::find(10);
+        $employees = $pic->managedEmployees();
+        $uniqueUnits = $pic->getManagedUnits();
+        return $employees;
+    }
+
+    function sandboxGeneratePDF()
+    {
+
+        // return Pdf::fake();
+
+        // return Pdf::view('report.laporan')
+        //     ->format('a4')
+        //     ->name('report-laporan.pdf');
+        return view('report.laporan');
+        // Jika ingin melihat HTML tanpa PDF gunakan ?preview=1
+
+    }
+    function sandboxSelectEmployee()
+    {
+        $hrdEmployees = Employee::select(
+            'id',
+            'nip',
+            'nama',
+            'pin'
+        )
+            ->where('is_deleted', 0)
+            ->whereNull('pin')
+            ->get();
+
+        dd($hrdEmployees);
+    }
+    function sandboxMysqlHrd()
     {
         $query = Employee::on('mysql_hrd') // Ensure this uses the mysql_hrd connection
             ->where('is_deleted', 0)
@@ -291,7 +327,7 @@ class SanboxController extends Controller
     }
 
 
-    public function sandboxSeedingDasarJadwal()
+    public function sandboxGenerateDasarJadwal()
     {
         $employees = Employee::where('is_deleted', 0)->get();
         $defaultSchedule = Schedule::where('is_default', 1)->first();

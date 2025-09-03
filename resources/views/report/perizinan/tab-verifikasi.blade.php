@@ -128,7 +128,6 @@
         formData.append('jam_keluar', $('#jam_keluar').val());
         formData.append('keterangan', $('#keterangan').val().trim());
 
-
         // alert($('#jam_masuk').val());
         // alert($('#jam_keluar').val());
         // Show loading state

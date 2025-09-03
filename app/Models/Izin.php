@@ -8,12 +8,20 @@ use Illuminate\Database\Eloquent\Model;
 class Izin extends Model
 {
     use HasFactory;
+
     protected $guarded = ['id'];
+
+    protected $casts = [
+        'submitted_at' => 'datetime',
+        'approved_supervisor_at' => 'datetime',
+        'approved_hrd_at' => 'datetime',
+    ];
 
     public function pic()
     {
         return $this->belongsTo(User::class, 'pic');
     }
+
     public function jenisIzin()
     {
         return $this->belongsTo(JenisIzin::class, 'jenis_izin');

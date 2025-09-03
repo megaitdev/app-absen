@@ -23,6 +23,10 @@
                 <a class="nav-link" href="{{ url('employee') }}"><i class="fas fa-users"></i>
                     <span>Employee</span></a>
             </li>
+            <li class="{{ $slug == 'perizinan' ? 'active' : '' }}">
+                <a class="nav-link" href="{{ url('perizinan') }}"><i class="fas fa-file-alt"></i>
+                    <span>Perizinan</span></a>
+            </li>
             <li class="{{ $slug == 'report' ? 'active' : '' }}">
                 <a class="nav-link" href="{{ url('report') }}"><i class="fas fa-chart-bar"></i>
                     <span>Report</span></a>

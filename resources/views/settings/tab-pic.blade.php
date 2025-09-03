@@ -270,6 +270,7 @@
                 type: 'POST',
                 data: formData,
                 success: function(res) {
+
                     // Close modal
                     $('#modal-edit-pic').modal('hide');
 

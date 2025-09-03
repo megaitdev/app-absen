@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Resource\CssController;
 use App\Http\Controllers\Resource\ScriptController;
+use App\Models\EmployeeHrd;
 use App\Models\ftm\Cabang;
 use App\Models\ftm\Departemen;
 use App\Models\ftm\EmployeeFtm;
@@ -14,6 +15,7 @@ use App\Models\mak_hrd\Posisi;
 use App\Models\mak_hrd\Unit;
 use App\Models\mak_matrix_produk\Kategori;
 use App\Models\mak_matrix_produk\Produk;
+use App\Models\PosisiHrd;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,20 +35,21 @@ class EmployeeController extends Controller
     function synchronizePinEmployee()
     {
         // Define the two database connections
-        $hrdConnection = DB::connection('mysql_hrd');
+        $hrdConnection = DB::connection('mysql');
         $ftmConnection = DB::connection('mysql_ftm');
 
         // Query from the HRD database
-        $hrdEmployees = $hrdConnection->table('employees')
+        $hrdEmployees = $hrdConnection->table('hrd_employees')
             ->select(
-                'employees.id',
-                'employees.nip',
-                'employees.nama',
-                'employees.pin'
+                'hrd_employees.id',
+                'hrd_employees.nip',
+                'hrd_employees.nama',
+                'hrd_employees.pin'
             )
-            ->where('employees.is_deleted', 0)
-            ->whereNull('employees.pin')
+            ->where('hrd_employees.is_deleted', 0)
+            ->whereNull('hrd_employees.pin')
             ->get();
+
 
         // Query from the FTM database
         $ftmEmployees = $ftmConnection->table('emp')
@@ -71,6 +74,9 @@ class EmployeeController extends Controller
             Employee::where('id', $employee->id)->update([
                 'pin' => $employee->pin
             ]);
+            EmployeeHrd::where('id', $employee->id)->update([
+                'pin' => $employee->pin
+            ]);
         }
     }
 
@@ -80,26 +86,26 @@ class EmployeeController extends Controller
         $this->synchronizePinEmployee();
 
         // Synchronize the employee data in the FTM database
-        $employees = Employee::where('is_deleted', 0)->orderBY('nama', 'asc')->get();
-        $employee_ftms = EmployeeFtm::all();
+        // $employees = Employee::where('is_deleted', 0)->orderBY('nama', 'asc')->get();
+        // $employee_ftms = EmployeeFtm::all();
 
 
-        foreach ($employees as $employee) {
-            $employee_ftm = $employee_ftms->where('nik', $employee->nip)->first();
-            if ($employee_ftm) {
-                if ($employee->updated_at->greaterThan($employee_ftm->lastupdate_date)) {
-                    $employee_ftm->alias = $employee->nama;
-                    $employee_ftm->nik = $employee->nip;
-                    $employee_ftm->pin = $employee->pin;
-                    $employee_ftm->save();
-                } else if ($employee->updated_at->lessThan($employee_ftm->lastupdate_date)) {
-                    $employee->nama = $employee_ftm->alias;
-                    $employee->nip = $employee_ftm->nik;
-                    $employee->pin = $employee_ftm->pin;
-                    $employee->save();
-                }
-            }
-        }
+        // foreach ($employees as $employee) {
+        //     $employee_ftm = $employee_ftms->where('nik', $employee->nip)->first();
+        //     if ($employee_ftm) {
+        //         if ($employee->updated_at->greaterThan($employee_ftm->lastupdate_date)) {
+        //             $employee_ftm->alias = $employee->nama;
+        //             $employee_ftm->nik = $employee->nip;
+        //             $employee_ftm->pin = $employee->pin;
+        //             $employee_ftm->save();
+        //         } else if ($employee->updated_at->lessThan($employee_ftm->lastupdate_date)) {
+        //             $employee->nama = $employee_ftm->alias;
+        //             $employee->nip = $employee_ftm->nik;
+        //             $employee->pin = $employee_ftm->pin;
+        //             $employee->save();
+        //         }
+        //     }
+        // }
     }
 
     function editEmployeeNeedUpdate(Employee $employee, Request $request)
@@ -107,7 +113,6 @@ class EmployeeController extends Controller
         $request->validate([
             'nama' => 'required',
             'nip' => 'required',
-            'pin_need_update' => 'required',
             'divisi' => 'required',
             'unit' => 'required',
         ]);
@@ -124,8 +129,17 @@ class EmployeeController extends Controller
             'nip' => $request->nip,
             'pin' => $request->pin_need_update,
         ]);
+        EmployeeHrd::where('id', $employee->id)->update([
+            'nama' => $request->nama,
+            'nip' => $request->nip,
+            'pin' => $request->pin_need_update,
+        ]);
 
         Posisi::where('id', $employee->posisi->id)->update([
+            'divisi_id' => $request->divisi,
+            'unit_id' => $request->unit
+        ]);
+        PosisiHrd::where('employee_id', $employee->id)->update([
             'divisi_id' => $request->divisi,
             'unit_id' => $request->unit
         ]);
@@ -297,7 +311,6 @@ class EmployeeController extends Controller
         $synchronizedCount = $employeesHRD->filter(function ($employeeHRD) use ($employeesFTM) {
             return $employeesFTM->contains(function ($employeeFTM) use ($employeeHRD) {
                 return $employeeFTM->nik == $employeeHRD->nip &&
-                    $employeeFTM->alias == $employeeHRD->nama &&
                     $employeeFTM->pin == $employeeHRD->pin;
             });
         })->count();
@@ -308,12 +321,12 @@ class EmployeeController extends Controller
     function countUnsynchronizedData()
     {
         $employeesHRD = Employee::where('is_deleted', 0)->get(['id', 'nip', 'nama', 'pin']);
-        $employeesFTM = EmployeeFtm::all(['nik', 'alias', 'pin'])->keyBy('nik');
+        $employeesFTM = EmployeeFtm::whereNotNull('pin')->get(['nik', 'alias', 'pin'])->keyBy('nik');
+
 
         return $employeesHRD->filter(function ($employeeHRD) use ($employeesFTM) {
             $employeeFTM = $employeesFTM->get($employeeHRD->nip);
             return !$employeeFTM ||
-                $employeeHRD->nama !== $employeeFTM->alias ||
                 $employeeHRD->pin !== $employeeFTM->pin;
         })->count();
     }

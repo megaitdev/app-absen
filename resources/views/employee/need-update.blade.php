@@ -23,11 +23,11 @@
             <div class="section-body">
                 <div class="row">
                     <div class="col-lg-5 pr-0">
-                        <div class="card mb-2">
+                        {{-- <div class="card mb-2">
                             <div class="card-body p-0">
                                 <div class="btn btn-primary h-100 w-100">Add to FTM</div>
                             </div>
-                        </div>
+                        </div> --}}
                         <div class="card card-dark">
                             <div class="card-header">
                                 <h4>Database HRD</h4>
@@ -251,7 +251,7 @@
                                                 </div>
                                             </div>
                                             <div class="form-group">
-                                                <button type="button" class="btn btn-light"
+                                                <button type="button" class="btn btn-danger"
                                                     data-dismiss="modal">Close</button>
                                                 <button type="submit" class="btn btn-dark float-right">Simpan</button>
                                             </div>
@@ -270,12 +270,12 @@
                                 hidden>
                             </input>
                         @endif
-                        <!-- Modal Edit Employee Need Update-->
+                        <!-- Modal Edit Employee HRD-->
                         <div class="modal fade" id="modal-edit-employee-need-update">
                             <div class="modal-dialog modal-lg modal-dialog-centered">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h4 class="text-dark">Edit Employee Need Update</h4>
+                                        <h4 class="text-dark">Edit Employee HRD</h4>
                                     </div>
                                     <div class="modal-body">
                                         <form action="{{ url('employee/need-update/edit') }}" method="post">
@@ -345,7 +345,7 @@
                                                 </div>
                                             </div>
                                             <div class="form-group">
-                                                <button type="button" class="btn btn-light"
+                                                <button type="button" class="btn btn-danger"
                                                     data-dismiss="modal">Close</button>
                                                 <button type="submit" class="btn btn-dark float-right">Simpan</button>
                                             </div>

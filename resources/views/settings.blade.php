@@ -37,6 +37,10 @@
                                 <a class="nav-link nav-link-dark {{ $settings_tab == 'dasar-jadwal' ? 'active' : '' }}"
                                     id="dasar-jadwal-tab" data-toggle="tab" href="#dasar-jadwal">Dasar Jadwal</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-link-dark {{ $settings_tab == 'hirarki' ? 'active' : '' }}"
+                                    id="hirarki-tab" data-toggle="tab" href="#hirarki">Hirarki Karyawan</a>
+                            </li>
                         </ul>
 
                         <div class="tab-content">
@@ -59,6 +63,10 @@
                             <div class="tab-pane fade {{ $settings_tab == 'dasar-jadwal' ? 'show active' : '' }}"
                                 id="dasar-jadwal" role="tabpanel">
                                 @include('settings.tab-dasar-jadwal')
+                            </div>
+                            <div class="tab-pane fade {{ $settings_tab == 'hirarki' ? 'show active' : '' }}" id="hirarki"
+                                role="tabpanel">
+                                @include('settings.tab-hirarki')
                             </div>
 
                         </div>

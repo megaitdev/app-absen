@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\HasWorkflowApproval;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class VerifikasiAbsen extends Model
 {
     use HasFactory;
+
     protected $connection = 'mysql';
     protected $guarded = ['id'];
-
 
     public function pic()
     {
